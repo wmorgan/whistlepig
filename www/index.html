@@ -62,41 +62,34 @@ bindings.
 <p>
 Roughly speaking, realtime search means:
 <ul>
-  <li> documents are available to to queries immediately after indexing, without
-  any further index merging steps; and </li>
-  <li> later documents are more important than earlier documents. </li>
+<li> documents are available to to queries immediately after indexing, without any reindexing or index merging; </li>
+<li> later documents are more important than earlier documents. </li>
 </ul>
-</p>
 
-<p>
-Whistlepig takes these principles to an extreme. In particular:
+Whistlepig takes these principles to an extreme.
 <ul>
-  <li> It only returns documents in the reverse order to which they were added
-  (i.e. LIFO order), and performs no ranking, reordering, or scoring. </li>
-  <li> It only supports incremental indexing. There is no notion of batch
-  indexing or index merging. </li>
-  <li> It does not support document deletion or modification (except in the
+<li> It only returns documents in the reverse (LIFO) order to which they were
+  added, and performs no ranking, reordering, or scoring. </li>
+<li> It only supports incremental indexing. There is no notion of batch indexing
+  or index merging. </li>
+<li> It does not support document deletion or modification (except in the
   special case of labels; see below). </li>
-  <li> In only supports in-memory indexes. </li>
+<li> It only supports in-memory indexes. </li>
 </ul>
-</p>
 
-<p>
 Features that Whistlepig does provide:
 <ul>
-  <li> Incremental indexing. Updates to the index are immediately available for
-  search.
-  <li> Fielded terms with arbitrary fields. </li>
-  <li> A full query language and parser with conjunctions, disjunctions, phrases,
+<li> Incremental indexing. Updates to the index are immediately available to
+  readers. </li>
+<li> Fielded terms with arbitrary fields. </li>
+<li> A full query language and parser with conjunctions, disjunctions, phrases,
   negations, grouping, and nesting. </li>
-  <li> Labels: arbitrary tokens which can be added to and removed from documents
-  at any point, and incorporated into search queries. (This is the only
-  mutable aspect of a document once it has been indexed.) </li>
-  <li> Early query termination. </li>
-  <li> Resumable queries. </li>
-  <li> A tiny, &lt; 3 KLOC ANSI C99 implementation. </li>
+<li> Labels: arbitrary tokens which can be added to and removed from documents
+  at any point, and incorporated into search queries. </li>
+<li> Early query termination and resumable queries. </li>
+<li> A tiny, &lt; 3 KLOC ANSI C99 implementation. </li>
 </ul>
-<p>
+</p>
 
 <h3>Synopsis (Ruby bindings)</h3>
 <pre class="ruby">

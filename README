@@ -23,18 +23,18 @@ Latest version: 0.1, released 2010-02-08.
 = Realtime search
 
 Roughly speaking, realtime search means:
-- documents are available to to queries immediately after indexing, without
-  any further index merging steps; and
+- documents are available to to queries immediately after indexing, without any
+  reindexing or index merging;
 - later documents are more important than earlier documents.
 
-Whistlepig takes these principles to an extreme. In particular:
-- It only returns documents in the reverse order to which they were added
-  (i.e. LIFO order), and performs no ranking, reordering, or scoring.
+Whistlepig takes these principles to an extreme.
+- It only returns documents in the reverse (LIFO) order to which they were
+  added, and performs no ranking, reordering, or scoring.
 - It only supports incremental indexing. There is no notion of batch indexing
   or index merging.
 - It does not support document deletion or modification (except in the
   special case of labels; see below).
-- In only supports in-memory indexes.
+- It only supports in-memory indexes.
 
 Features that Whistlepig does provide:
 - Incremental indexing. Updates to the index are immediately available to
@@ -43,10 +43,8 @@ Features that Whistlepig does provide:
 - A full query language and parser with conjunctions, disjunctions, phrases,
   negations, grouping, and nesting.
 - Labels: arbitrary tokens which can be added to and removed from documents
-  at any point, and incorporated into search queries. (This is the only
-  mutable aspect of a document once it has been indexed.)
-- Early query termination.
-- Resumable queries.
+  at any point, and incorporated into search queries.
+- Early query termination and resumable queries.
 - A tiny, < 3 KLOC ANSI C99 implementation.
 
 == Synopsis (using Ruby bindings)
@@ -82,6 +80,6 @@ Features that Whistlepig does provide:
 Whistlepig is currently single-process and single-thread only. However, it is
 built with multi-process access in mind. Per-segment single-writer,
 multi-reader support is planned in the near future. Multi-writer support can be
-accomplished via index striping and is planned for the distant future.
+accomplished via index striping and may be attempted in the distant future.
 
-Please send bug reports and comments to: wmorgan-whistlepig-design@masanjin.net.
+Please send bug reports and comments to: wmorgan-whistlepig-readme@masanjin.net.
