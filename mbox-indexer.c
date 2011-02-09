@@ -86,15 +86,16 @@ int main(int argc, char* argv[]) {
 
     long end_offset = ftell(mbox);
     if(end_offset > start_offset) {
+      size_t dummy_size;
       uint64_t doc_id;
       DIE_IF_ERROR(wp_index_add_entry(idx, entry, &doc_id));
       DIE_IF_ERROR(wp_index_add_label(idx, "inbox", doc_id));
       DIE_IF_ERROR(wp_entry_free(entry));
 
       // write the offset info
-      fwrite(&doc_id, sizeof(doc_id), 1, offsets);
-      fwrite(&start_offset, sizeof(start_offset), 1, offsets);
-      fwrite(&end_offset, sizeof(end_offset), 1, offsets);
+      dummy_size = fwrite(&doc_id, sizeof(doc_id), 1, offsets);
+      dummy_size = fwrite(&start_offset, sizeof(start_offset), 1, offsets);
+      dummy_size = fwrite(&end_offset, sizeof(end_offset), 1, offsets);
       //printf("doc %u is from %ld--%ld\n", doc_id, start_offset, end_offset);
     }
   }
