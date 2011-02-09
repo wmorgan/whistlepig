@@ -1,3 +1,4 @@
+#include <inttypes.h>
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -261,7 +262,7 @@ wp_error* wp_index_add_label(wp_index* index, const char* label, uint64_t doc_id
     else DEBUG("did not find doc %llu in segment %u", doc_id, i - 1);
   }
 
-  if(!found) RAISE_ERROR("couldn't find doc id %llu", doc_id);
+  if(!found) RAISE_ERROR("couldn't find doc id %"PRIu64, doc_id);
 
   return NO_ERROR;
 }
@@ -279,7 +280,7 @@ wp_error* wp_index_remove_label(wp_index* index, const char* label, uint64_t doc
     else DEBUG("did not find doc %llu in segment %u", doc_id, i - 1);
   }
 
-  if(!found) RAISE_ERROR("couldn't find doc id %llu", doc_id);
+  if(!found) RAISE_ERROR("couldn't find doc id %"PRIu64, doc_id);
 
   return NO_ERROR;
 }
