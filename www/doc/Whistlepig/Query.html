@@ -1,0 +1,413 @@
+<?xml version="1.0" encoding="utf8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+	<meta content="text/html; charset=utf8" http-equiv="Content-Type" />
+
+	<title>Class: Whistlepig::Query</title>
+
+	<link rel="stylesheet" href="../rdoc.css" type="text/css" media="screen" />
+
+	<script src="../js/jquery.js" type="text/javascript"
+		charset="utf-8"></script>
+	<script src="../js/thickbox-compressed.js" type="text/javascript"
+		charset="utf-8"></script>
+	<script src="../js/quicksearch.js" type="text/javascript"
+		charset="utf-8"></script>
+	<script src="../js/darkfish.js" type="text/javascript"
+		charset="utf-8"></script>
+
+</head>
+<body class="class">
+
+	<div id="metadata">
+		<div id="home-metadata">
+			<div id="home-section" class="section">
+        <h3 class="section-header">
+          <a href="../index.html">Home</a>
+          <a href="../index.html#classes">Classes</a>
+          <a href="../index.html#methods">Methods</a>
+        </h3>
+			</div>
+		</div>
+
+		<div id="file-metadata">
+			<div id="file-list-section" class="section">
+				<h3 class="section-header">In Files</h3>
+				<div class="section-body">
+					<ul>
+					
+						<li><a href="../ext/whistlepig/whistlepigc_c.html?TB_iframe=true&amp;height=550&amp;width=785"
+							class="thickbox" title="ext/whistlepig/whistlepigc.c">ext/whistlepig/whistlepigc.c</a></li>
+					
+						<li><a href="../lib/whistlepig_rb.html?TB_iframe=true&amp;height=550&amp;width=785"
+							class="thickbox" title="lib/whistlepig.rb">lib/whistlepig.rb</a></li>
+					
+					</ul>
+				</div>
+			</div>
+
+			
+		</div>
+
+		<div id="class-metadata">
+
+			<!-- Parent Class -->
+			
+			<div id="parent-class-section" class="section">
+				<h3 class="section-header">Parent</h3>
+				
+				<p class="link">Object</p>
+				
+			</div>
+			
+
+			<!-- Namespace Contents -->
+			
+
+			<!-- Method Quickref -->
+			
+			<div id="method-list-section" class="section">
+				<h3 class="section-header">Methods</h3>
+				<ul class="link-list">
+					
+					<li><a href="#method-c-new">::new</a></li>
+					
+					<li><a href="#method-i-and">#and</a></li>
+					
+					<li><a href="#method-i-or">#or</a></li>
+					
+					<li><a href="#method-i-to_s">#to_s</a></li>
+					
+				</ul>
+			</div>
+			
+
+			<!-- Included Modules -->
+			
+		</div>
+
+		<div id="project-metadata">
+			
+			
+			<div id="fileindex-section" class="section project-section">
+				<h3 class="section-header">Files</h3>
+				<ul>
+				
+					<li class="file"><a href="../README.html">README</a></li>
+				
+				</ul>
+			</div>
+			
+
+			<div id="classindex-section" class="section project-section">
+				<h3 class="section-header">Class Index
+					<span class="search-toggle"><img src="../images/find.png"
+						height="16" width="16" alt="[+]"
+						title="show/hide quicksearch" /></span></h3>
+				<form action="#" method="get" accept-charset="utf-8" class="initially-hidden">
+				<fieldset>
+					<legend>Quicksearch</legend>
+					<input type="text" name="quicksearch" value=""
+						class="quicksearch-field" />
+				</fieldset>
+				</form>
+
+				<ul class="link-list">
+				
+					<li><a href="../Whistlepig.html">Whistlepig</a></li>
+				
+					<li><a href="../Whistlepig/Entry.html">Whistlepig::Entry</a></li>
+				
+					<li><a href="../Whistlepig/Error.html">Whistlepig::Error</a></li>
+				
+					<li><a href="../Whistlepig/Index.html">Whistlepig::Index</a></li>
+				
+					<li><a href="../Whistlepig/ParseError.html">Whistlepig::ParseError</a></li>
+				
+					<li><a href="../Whistlepig/Query.html">Whistlepig::Query</a></li>
+				
+				</ul>
+				<div id="no-class-search-results" style="display: none;">No matching classes.</div>
+			</div>
+
+			
+		</div>
+	</div>
+
+	<div id="documentation">
+		<h1 class="class">Whistlepig::Query</h1>
+
+		<div id="description">
+			<p>
+A query. Queries are created from strings with Query#new. If parsing the
+string fails, a <a href="ParseError.html">ParseError</a> is thrown.
+</p>
+<p>
+At the lowest level, queries are composed of space-separated terms. Matches
+against that term are restricted to the default field specified at parse
+time.
+</p>
+<pre>
+  hello                  # search for &quot;hello&quot; in the default field
+</pre>
+<p>
+Term matches can be restricted to another field by by prefixing them with
+the field name and &#8220;:&#8221;, e.g. &#8220;subject:hello&#8221;.
+</p>
+<pre>
+  subject:hello          # search for &quot;hello&quot; in the &quot;subject&quot; field
+</pre>
+<p>
+Multiple terms are considered conjunctive (i.e. all must match) unless the
+special token &#8220;OR&#8221; appears between them. The &#8220;OR&#8221;
+must be capitalized in this case.
+</p>
+<pre>
+  word1 word2            # search for word1 and word2
+  word1 OR word2         # search for word1 or word2
+  subject:hello bob      # &quot;hello&quot; in the subject field and &quot;bob&quot; in the
+                         #  default field
+</pre>
+<p>
+Parentheses can be used to group disjunctions, conjunctions or fields.
+</p>
+<pre>
+  (word1 OR word2) word3 # &quot;word3&quot; and either &quot;word1&quot; or &quot;word2&quot;
+  field:(word1 OR word2) # &quot;word1&quot; or &quot;word2&quot; in field &quot;field&quot;
+</pre>
+<p>
+Phrases are specified by surrounding the terms with double quotes.
+</p>
+<pre>
+ &quot;bob jones&quot;             # documents with the phrase &quot;bob jones&quot;
+</pre>
+<p>
+Negations can be specified with a - prefix.
+</p>
+<pre>
+  -word                  # docs without &quot;word&quot;
+  -subject:(bob OR joe)  # docs with neither &quot;bob&quot; nor &quot;joe&quot; in subject
+</pre>
+<p>
+Labels are specified with a ~ prefix. Labels do not have fields.
+</p>
+<pre>
+  ~inbox                 # docs with the &quot;inbox&quot; label
+  -~inbox                # docs without the &quot;inbox&quot; label
+  -~inbox subject:hello  # docs with subject &quot;hello&quot; and without the
+                         # inbox label
+</pre>
+<p>
+All of the above can be mixed and matched, of course.
+</p>
+<pre>
+  -subject:&quot;spam email&quot; ~inbox (money OR cash)
+  (&quot;love you&quot; OR &quot;hate you&quot;) -(~deleted OR ~spam)
+  etc...
+</pre>
+<p>
+Existing query objects can also be altered programmatically, at least to a
+limited extent, by calling <a href="Query.html#method-i-and">Query#and</a>
+and <a href="Query.html#method-i-or">Query#or</a>.
+</p>
+
+		</div>
+
+		<!-- Constants -->
+		
+
+		<!-- Attributes -->
+		
+		<div id="attribute-method-details" class="method-section section">
+			<h3 class="section-header">Attributes</h3>
+
+			
+			<div id="query-attribute-method" class="method-detail">
+				<a name="query"></a>
+				
+				<div class="method-heading attribute-method-heading">
+					<span class="method-name">query</span><span
+						class="attribute-access-type">[R]</span>
+				</div>
+
+				<div class="method-description">
+				
+				
+				
+				</div>
+			</div>
+			
+		</div>
+		
+
+		<!-- Methods -->
+		
+		<div id="public-class-method-details" class="method-section section">
+			<h3 class="section-header">Public Class Methods</h3>
+
+		
+			<div id="new-method" class="method-detail ">
+				<a name="method-c-new"></a>
+
+				<div class="method-heading">
+				
+					<span class="method-callseq">new(default_field, query_string)</span>
+					<span class="method-click-advice">click to toggle source</span>
+				
+				</div>
+
+				<div class="method-description">
+					
+					<p>
+Creates a new query by parsing the string <tt>query_string</tt>, which must
+be a String.  Any non-fielded terms will used the field
+<tt>default_field</tt>, which must also be a String. Raises a <a
+href="ParseError.html">ParseError</a> if the query cannot be parsed.
+</p>
+					
+
+					
+					<div class="method-source-code"
+						id="new-source">
+<pre>
+static VALUE query_new(VALUE class, VALUE default_field, VALUE string) </pre>
+					</div>
+					
+				</div>
+
+				
+
+				
+			</div>
+
+		
+		</div>
+	
+		<div id="public-instance-method-details" class="method-section section">
+			<h3 class="section-header">Public Instance Methods</h3>
+
+		
+			<div id="and-method" class="method-detail ">
+				<a name="method-i-and"></a>
+
+				<div class="method-heading">
+				
+					<span class="method-callseq">and(other)</span>
+					<span class="method-click-advice">click to toggle source</span>
+				
+				</div>
+
+				<div class="method-description">
+					
+					<p>
+Returns a new <a href="Query.html">Query</a> that is a conjunction of this
+query and <tt>other</tt>, which must also be a <a
+href="Query.html">Query</a> object.
+</p>
+					
+
+					
+					<div class="method-source-code"
+						id="and-source">
+<pre>
+static VALUE query_and(VALUE self, VALUE v_other) </pre>
+					</div>
+					
+				</div>
+
+				
+
+				
+			</div>
+
+		
+			<div id="or-method" class="method-detail ">
+				<a name="method-i-or"></a>
+
+				<div class="method-heading">
+				
+					<span class="method-callseq">or(other)</span>
+					<span class="method-click-advice">click to toggle source</span>
+				
+				</div>
+
+				<div class="method-description">
+					
+					<p>
+Returns a new <a href="Query.html">Query</a> that is a disjunction of this
+query and <tt>other</tt>, which must also be a <a
+href="Query.html">Query</a> object.
+</p>
+					
+
+					
+					<div class="method-source-code"
+						id="or-source">
+<pre>
+static VALUE query_or(VALUE self, VALUE v_other) </pre>
+					</div>
+					
+				</div>
+
+				
+
+				
+			</div>
+
+		
+			<div id="to-s-method" class="method-detail ">
+				<a name="method-i-to_s"></a>
+
+				<div class="method-heading">
+				
+					<span class="method-name">to_s</span><span
+						class="method-args">()</span>
+					<span class="method-click-advice">click to toggle source</span>
+				
+				</div>
+
+				<div class="method-description">
+					
+					<p>
+Returns a parsed representation of a String, useful for debugging.
+</p>
+					
+
+					
+					<div class="method-source-code"
+						id="to-s-source">
+<pre>
+static VALUE query_to_s(VALUE self) </pre>
+					</div>
+					
+				</div>
+
+				
+
+				
+			</div>
+
+		
+		</div>
+	
+
+	</div>
+
+
+	<div id="rdoc-debugging-section-dump" class="debugging-section">
+	
+		<p>Disabled; run with --debug to generate this.</p>
+	
+	</div>
+
+	<div id="validator-badges">
+		<p><small><a href="http://validator.w3.org/check/referer">[Validate]</a></small></p>
+		<p><small>Generated with the <a href="http://deveiate.org/projects/Darkfish-Rdoc/">Darkfish
+			Rdoc Generator</a> 1.1.6</small>.</p>
+	</div>
+
+</body>
+</html>
+

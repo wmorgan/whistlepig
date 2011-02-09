@@ -1,0 +1,142 @@
+#!/usr/bin/env ruby
+
+require 'rubygems'
+require 'trollop'
+require 'whistlepig'
+require 'whistlepig/email'
+require 'console'
+require 'console/string'
+require 'readline'
+
+FROM_SIZE = 15
+SUBJ_SIZE = 45
+DATE_SIZE = 10
+TOTAL_WIDTH = 80
+PAGE_SIZE = 10
+
+opts = Trollop::options do
+  banner <<EOS
+Usage: #{$0} [options] <mbox filename>
+
+Where options include:
+EOS
+  opt :dir, "Base directory for index files", :default => "."
+end
+
+mbox_fn = ARGV.shift or Trollop::die "need a filename"
+ARGV.empty? or Trollop::die "need exactly one filename"
+
+Console.init_locale!
+store = Whistlepig::Email::Store.new opts.dir
+
+query = Whistlepig::Query.new "body", "~inbox"
+store.set_query query
+results = store.load_results PAGE_SIZE
+start_idx = 0
+
+while true
+  header = "[#{store.num_results}] #{query.query} "
+  header += "=" * [(TOTAL_WIDTH - header.display_width), 0].max
+  puts header
+
+  results.each_with_index do |message, i|
+    from = message[:from].to_s.display_slice(0, FROM_SIZE)
+    subj = message[:subject].display_slice(0, SUBJ_SIZE)
+    date = Time.at(message[:date]).strftime("%Y/%m/%d %H:%M").display_slice(0, DATE_SIZE)
+    widgets =
+      (message[:starred] ? "*" : " ") +
+      (message[:read] ? " " : "N") +
+      (message[:has_attachment] ? "@" : " ")
+
+    printf "%3d %s %#{FROM_SIZE}s %-#{SUBJ_SIZE}s %#{DATE_SIZE}s\n", i + start_idx, widgets, from, subj, date
+  end
+  cmd = Readline.readline "(h for help)> "
+  if cmd
+    cmd = cmd.strip
+    Readline::HISTORY.push cmd unless cmd.empty?
+  end
+
+  case cmd
+  when "h", "help"
+    puts <<EOS
+
+Commands:
+   <enter>: go to next page of query results
+       top: go to top of query resutls
+     q, ^D: quit
+  /<query>: start a new query <query>
+<result #>: view message <result #>
+
+Searches:
+Full query language, including nesting. Labels are specified with ~.  The only
+labels supported so far are "read", "inbox" and "attachment". All messages are
+in your inbox and there's no way to remove them (yet).
+
+Example queries:
+
+ ~inbox       # show my my inbox
+ ruby OR "Bob Jones"
+ -~read ~attachment
+ ruby (-ruby-talk OR -~read)
+
+EOS
+  when "", "cont", "continue"
+    start_idx += results.size unless results.size < PAGE_SIZE
+    results = store.load_results PAGE_SIZE
+  when "top"
+    start_idx = 0
+    store.set_query query
+    results = store.load_results PAGE_SIZE
+  when "q", nil
+    puts
+    break
+  when /^\/(.*)$/ # new query
+    begin
+      newquery = $1
+      ## kinda hacky... downcase everything except ORs
+      newquery = newquery.split(/\s+/).map { |x| x == "OR" ? x : x.downcase }.join(" ")
+      newquery = Whistlepig::Query.new("body", newquery)
+      puts "# parsed query is #{newquery}"
+      store.set_query newquery
+      query = newquery
+      results = store.load_results PAGE_SIZE
+      start_idx = 0
+    rescue Whistlepig::ParseError => e
+      puts "Error: #{e.message}"
+    end
+  when /^(\d+)$/
+    id = $1.to_i - start_idx
+
+    if id < 0 || id >= results.size
+      puts "unknown message; expecting id between #{start_idx} and #{start_idx + results.size}"
+      next
+    end
+
+    hash = results[id]
+    if hash[:offset].nil?
+      puts "PROBLEM LOADING RECORD: #{hash.inspect}"
+      next
+    end
+
+    rawbody = File.open(mbox_fn, "r:BINARY") { |f| Whistlepig::Email::MboxSplitter.new(f).message_at hash[:offset] }
+    m = Whistlepig::Email::Message.new(rawbody).parse!
+    puts "From: #{m.from}"
+    puts "To: #{m.to.join(", ")}"
+    puts "Cc: #{m.cc.join(", ")}" unless m.cc.empty?
+    puts "Bcc: #{m.bcc.join(", ")}" unless m.bcc.empty?
+    puts "Date: #{Time.at m.date}"
+    puts "Subject: #{m.subject}\n\n"
+    m.mime_parts("text/plain").each do |type, fn, content|
+      if fn
+        puts "\n[attachment (#{type}): #{fn}]"
+      else
+        puts content
+      end
+    end
+    puts
+    store.update_message_labels hash[:doc_id], (hash[:labels] + ["read"])
+    results[id] = store.docinfo_for hash[:doc_id] # reload docinfo
+  else
+    puts "unknown command. try h for help."
+  end
+end

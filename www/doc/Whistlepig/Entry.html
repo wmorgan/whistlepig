@@ -1,0 +1,331 @@
+<?xml version="1.0" encoding="utf8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+	<meta content="text/html; charset=utf8" http-equiv="Content-Type" />
+
+	<title>Class: Whistlepig::Entry</title>
+
+	<link rel="stylesheet" href="../rdoc.css" type="text/css" media="screen" />
+
+	<script src="../js/jquery.js" type="text/javascript"
+		charset="utf-8"></script>
+	<script src="../js/thickbox-compressed.js" type="text/javascript"
+		charset="utf-8"></script>
+	<script src="../js/quicksearch.js" type="text/javascript"
+		charset="utf-8"></script>
+	<script src="../js/darkfish.js" type="text/javascript"
+		charset="utf-8"></script>
+
+</head>
+<body class="class">
+
+	<div id="metadata">
+		<div id="home-metadata">
+			<div id="home-section" class="section">
+        <h3 class="section-header">
+          <a href="../index.html">Home</a>
+          <a href="../index.html#classes">Classes</a>
+          <a href="../index.html#methods">Methods</a>
+        </h3>
+			</div>
+		</div>
+
+		<div id="file-metadata">
+			<div id="file-list-section" class="section">
+				<h3 class="section-header">In Files</h3>
+				<div class="section-body">
+					<ul>
+					
+						<li><a href="../ext/whistlepig/whistlepigc_c.html?TB_iframe=true&amp;height=550&amp;width=785"
+							class="thickbox" title="ext/whistlepig/whistlepigc.c">ext/whistlepig/whistlepigc.c</a></li>
+					
+						<li><a href="../lib/whistlepig_rb.html?TB_iframe=true&amp;height=550&amp;width=785"
+							class="thickbox" title="lib/whistlepig.rb">lib/whistlepig.rb</a></li>
+					
+					</ul>
+				</div>
+			</div>
+
+			
+		</div>
+
+		<div id="class-metadata">
+
+			<!-- Parent Class -->
+			
+			<div id="parent-class-section" class="section">
+				<h3 class="section-header">Parent</h3>
+				
+				<p class="link">Object</p>
+				
+			</div>
+			
+
+			<!-- Namespace Contents -->
+			
+
+			<!-- Method Quickref -->
+			
+			<div id="method-list-section" class="section">
+				<h3 class="section-header">Methods</h3>
+				<ul class="link-list">
+					
+					<li><a href="#method-c-new">::new</a></li>
+					
+					<li><a href="#method-i-add_string">#add_string</a></li>
+					
+					<li><a href="#method-i-add_token">#add_token</a></li>
+					
+					<li><a href="#method-i-size">#size</a></li>
+					
+				</ul>
+			</div>
+			
+
+			<!-- Included Modules -->
+			
+		</div>
+
+		<div id="project-metadata">
+			
+			
+			<div id="fileindex-section" class="section project-section">
+				<h3 class="section-header">Files</h3>
+				<ul>
+				
+					<li class="file"><a href="../README.html">README</a></li>
+				
+				</ul>
+			</div>
+			
+
+			<div id="classindex-section" class="section project-section">
+				<h3 class="section-header">Class Index
+					<span class="search-toggle"><img src="../images/find.png"
+						height="16" width="16" alt="[+]"
+						title="show/hide quicksearch" /></span></h3>
+				<form action="#" method="get" accept-charset="utf-8" class="initially-hidden">
+				<fieldset>
+					<legend>Quicksearch</legend>
+					<input type="text" name="quicksearch" value=""
+						class="quicksearch-field" />
+				</fieldset>
+				</form>
+
+				<ul class="link-list">
+				
+					<li><a href="../Whistlepig.html">Whistlepig</a></li>
+				
+					<li><a href="../Whistlepig/Entry.html">Whistlepig::Entry</a></li>
+				
+					<li><a href="../Whistlepig/Error.html">Whistlepig::Error</a></li>
+				
+					<li><a href="../Whistlepig/Index.html">Whistlepig::Index</a></li>
+				
+					<li><a href="../Whistlepig/ParseError.html">Whistlepig::ParseError</a></li>
+				
+					<li><a href="../Whistlepig/Query.html">Whistlepig::Query</a></li>
+				
+				</ul>
+				<div id="no-class-search-results" style="display: none;">No matching classes.</div>
+			</div>
+
+			
+		</div>
+	</div>
+
+	<div id="documentation">
+		<h1 class="class">Whistlepig::Entry</h1>
+
+		<div id="description">
+			<p>
+Represents document, before being added to the index.
+</p>
+<p>
+Entries allow you to build up a document in memory before indexing it. Once
+you&#8217;ve built it, pass it to <a
+href="Index.html#method-i-add_entry">Index#add_entry</a>.
+</p>
+
+		</div>
+
+		<!-- Constants -->
+		
+
+		<!-- Attributes -->
+		
+
+		<!-- Methods -->
+		
+		<div id="public-class-method-details" class="method-section section">
+			<h3 class="section-header">Public Class Methods</h3>
+
+		
+			<div id="new-method" class="method-detail ">
+				<a name="method-c-new"></a>
+
+				<div class="method-heading">
+				
+					<span class="method-name">new</span><span
+						class="method-args">()</span>
+					<span class="method-click-advice">click to toggle source</span>
+				
+				</div>
+
+				<div class="method-description">
+					
+					<p>
+Creates a new, empty entry.   
+</p>
+					
+
+					
+					<div class="method-source-code"
+						id="new-source">
+<pre>
+static VALUE entry_new(VALUE class) </pre>
+					</div>
+					
+				</div>
+
+				
+
+				
+			</div>
+
+		
+		</div>
+	
+		<div id="public-instance-method-details" class="method-section section">
+			<h3 class="section-header">Public Instance Methods</h3>
+
+		
+			<div id="add-string-method" class="method-detail ">
+				<a name="method-i-add_string"></a>
+
+				<div class="method-heading">
+				
+					<span class="method-callseq">add_string(field, string)</span>
+					<span class="method-click-advice">click to toggle source</span>
+				
+				</div>
+
+				<div class="method-description">
+					
+					<p>
+Adds a String <tt>string</tt> with field +field</field> to an entry. The
+string will be tokenized on whitespace. Both <tt>token</tt> and
++string</field> must be strings.
+</p>
+<p>
+Returns itself.
+</p>
+					
+
+					
+					<div class="method-source-code"
+						id="add-string-source">
+<pre>
+static VALUE entry_add_string(VALUE self, VALUE field, VALUE string) </pre>
+					</div>
+					
+				</div>
+
+				
+
+				
+			</div>
+
+		
+			<div id="add-token-method" class="method-detail ">
+				<a name="method-i-add_token"></a>
+
+				<div class="method-heading">
+				
+					<span class="method-callseq">add_token(field, token)</span>
+					<span class="method-click-advice">click to toggle source</span>
+				
+				</div>
+
+				<div class="method-description">
+					
+					<p>
+Adds a single token <tt>token</tt> with field +field</field> to an entry.
+Both <tt>token</tt> and +field</field> must be strings.
+</p>
+<p>
+Returns itself.
+</p>
+					
+
+					
+					<div class="method-source-code"
+						id="add-token-source">
+<pre>
+static VALUE entry_add_token(VALUE self, VALUE field, VALUE term) </pre>
+					</div>
+					
+				</div>
+
+				
+
+				
+			</div>
+
+		
+			<div id="size-method" class="method-detail ">
+				<a name="method-i-size"></a>
+
+				<div class="method-heading">
+				
+					<span class="method-name">size</span><span
+						class="method-args">()</span>
+					<span class="method-click-advice">click to toggle source</span>
+				
+				</div>
+
+				<div class="method-description">
+					
+					<p>
+Returns the number of tokens in the entry.
+</p>
+					
+
+					
+					<div class="method-source-code"
+						id="size-source">
+<pre>
+static VALUE entry_size(VALUE self) </pre>
+					</div>
+					
+				</div>
+
+				
+
+				
+			</div>
+
+		
+		</div>
+	
+
+	</div>
+
+
+	<div id="rdoc-debugging-section-dump" class="debugging-section">
+	
+		<p>Disabled; run with --debug to generate this.</p>
+	
+	</div>
+
+	<div id="validator-badges">
+		<p><small><a href="http://validator.w3.org/check/referer">[Validate]</a></small></p>
+		<p><small>Generated with the <a href="http://deveiate.org/projects/Darkfish-Rdoc/">Darkfish
+			Rdoc Generator</a> 1.1.6</small>.</p>
+	</div>
+
+</body>
+</html>
+

@@ -1,0 +1,68 @@
+#!/usr/bin/env ruby
+
+require 'rubygems'
+require 'trollop'
+require 'whistlepig/email'
+include Whistlepig::Email
+
+opts = Trollop::options do
+  banner <<EOS
+Usage: #{$0} [options] <mbox filename>
+
+Where options include:
+EOS
+  opt :dir, "Base directory for index files", :default => "."
+  opt :start_offset, "Start offset for scanning", :default => 0
+  opt :max_messages, "Index at most this many messages and then quit", :type => Integer
+end
+
+fn = ARGV.shift or Trollop::die "need a filename"
+ARGV.empty? or Trollop::die "need exactly one filename"
+store = Store.new opts.dir
+
+num_indexed = num_bad = num_seen = parse_time = 0
+startt = lastt = Time.now
+puts "scanning..."
+begin
+  File.open fn, "r:BINARY" do |f|
+    begin
+      f.seek opts.start_offset
+      MboxSplitter.new(f).each_message do |rawbody, offset|
+        break if opts.max_messages && num_indexed >= opts.max_messages
+        begin
+          parse_startt = Time.now
+          message = Message.new(rawbody).parse!
+          message.mime_parts("text/plain") # throw this result away for now -- it's cached and i want it to count as parse time
+          parse_time += (Time.now - parse_startt)
+
+          if store.contains_msgid? message.msgid
+            num_seen += 1
+          else
+            doc_id = store.add_message message, offset, %w(inbox)
+            #puts "[#{doc_id}, #{offset}]"
+            num_indexed += 1
+          end
+        rescue InvalidMessageError => e
+          #puts "skipping invalid email line #{f.lineno}: #{e.message}"
+          num_bad += 1
+        end
+
+        if Time.now - lastt > 5
+          elapsed = Time.now - startt
+          printf "indexed %d, skipped %d bad, and skipped %d already seen messages in %.1fs = %.1f m/s\n", num_indexed, num_bad, num_seen, elapsed, (num_indexed + num_bad + num_seen) / elapsed
+          printf "parsing took %.1fs, indexing took %.1fs, storing took %.1fs, and unknown took %.1fs\n", parse_time, store.index_time, store.store_time, Time.now - lastt - parse_time - - store.store_time - store.index_time
+          store.reset_timers!
+          parse_time = 0
+          lastt = Time.now
+        end
+      end
+    ensure
+      puts "end offset is #{f.tell} (line #{f.lineno})"
+    end
+  end
+ensure
+  store.close
+end
+
+elapsed = Time.now - startt
+printf "indexed %d, skipped %d bad, and skipped %d already seen messages in %.1fs = %.1f m/s\n", num_indexed, num_bad, num_seen, elapsed, (num_indexed + num_bad + num_seen) / elapsed

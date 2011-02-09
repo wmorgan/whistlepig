@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+	<meta content="text/html; charset=utf8" http-equiv="Content-Type" />
+
+	<title>File: README [Whistlepig]</title>
+
+	<link type="text/css" media="screen" href="./rdoc.css" rel="stylesheet" />
+
+	<script src="./js/jquery.js" type="text/javascript"
+		charset="utf-8"></script>
+	<script src="./js/thickbox-compressed.js" type="text/javascript"
+		charset="utf-8"></script>
+	<script src="./js/quicksearch.js" type="text/javascript"
+		charset="utf-8"></script>
+	<script src="./js/darkfish.js" type="text/javascript"
+		charset="utf-8"></script>
+</head>
+
+<body class="file">
+	<div id="metadata">
+		<div id="home-metadata">
+			<div id="home-section" class="section">
+        <h3 class="section-header">
+          <a href="./index.html">Home</a>
+          <a href="./index.html#classes">Classes</a>
+          <a href="./index.html#methods">Methods</a>
+        </h3>
+			</div>
+		</div>
+
+		<div id="project-metadata">
+			
+			
+			<div id="fileindex-section" class="section project-section">
+				<h3 class="section-header">Files</h3>
+				<ul>
+				
+					<li class="file"><a href="./README.html">README</a></li>
+				
+				</ul>
+			</div>
+			
+
+			<div id="classindex-section" class="section project-section">
+				<h3 class="section-header">Class Index
+					<span class="search-toggle"><img src="./images/find.png"
+						height="16" width="16" alt="[+]"
+						title="show/hide quicksearch" /></span></h3>
+				<form action="#" method="get" accept-charset="utf-8" class="initially-hidden">
+				<fieldset>
+					<legend>Quicksearch</legend>
+					<input type="text" name="quicksearch" value=""
+						class="quicksearch-field" />
+				</fieldset>
+				</form>
+
+				<ul class="link-list">
+				
+					<li><a href="./Whistlepig.html">Whistlepig</a></li>
+				
+					<li><a href="./Whistlepig/Entry.html">Whistlepig::Entry</a></li>
+				
+					<li><a href="./Whistlepig/Error.html">Whistlepig::Error</a></li>
+				
+					<li><a href="./Whistlepig/Index.html">Whistlepig::Index</a></li>
+				
+					<li><a href="./Whistlepig/ParseError.html">Whistlepig::ParseError</a></li>
+				
+					<li><a href="./Whistlepig/Query.html">Whistlepig::Query</a></li>
+				
+				</ul>
+				<div id="no-class-search-results" style="display: none;">No matching classes.</div>
+			</div>
+
+			
+		</div>
+	</div>
+
+	<div id="documentation">
+		<h1><a href="Whistlepig.html">Whistlepig</a></h1>
+<p>
+<a href="Whistlepig.html">Whistlepig</a> is a minimalist realtime full-text
+search index. Its goal is to be as small and minimally-featured as
+possible, while still remaining useful, performant and scalable to large
+corpora. If you want realtime full-text search without the frills, <a
+href="Whistlepig.html">Whistlepig</a> may be for you.
+</p>
+<p>
+<a href="Whistlepig.html">Whistlepig</a> takes the principles of realtime
+search to an extreme. In particular:
+</p>
+<ul>
+<li><p>
+It only returns documents in the reverse order to which they were added
+(i.e. LIFO order), and performs no ranking, reordering, or scoring.
+</p>
+</li>
+<li><p>
+It only supports incremental indexing. There is no notion of batch indexing
+or index merging.
+</p>
+</li>
+<li><p>
+It does not support document deletion or modification (except in the
+special case of labels; see below).
+</p>
+</li>
+<li><p>
+In only supports in-memory indexes.
+</p>
+</li>
+</ul>
+<p>
+Features that <a href="Whistlepig.html">Whistlepig</a> does provide:
+</p>
+<ul>
+<li><p>
+Incremental indexing. Updates to the index are immediately available to
+readers.
+</p>
+</li>
+<li><p>
+Fielded terms with arbitrary numbers of fields.
+</p>
+</li>
+<li><p>
+A full query language and parser with conjunctions, disjunctions, phrases,
+negations, and grouping.
+</p>
+</li>
+<li><p>
+Labels: arbitrary tokens which can be added to and removed from documents
+at any point, and incorporated into search queries. (This is the only
+mutable aspect of a document once it has been indexed.)
+</p>
+</li>
+<li><p>
+Early query termination.
+</p>
+</li>
+<li><p>
+Resumable queries.
+</p>
+</li>
+<li><p>
+A tiny, < 3 KLOC ANSI C implementation.
+</p>
+</li>
+</ul>
+<h2>Synopsis (using Ruby bindings)</h2>
+<pre>
+  require 'rubygems'
+  require 'whistlepig'
+
+  include Whistlepig
+
+  index = Index.new &quot;index&quot;
+
+  entry1 = Entry.new
+  entry1.add_string(&quot;body&quot;, &quot;hello there bob&quot;)
+  docid1 = index.add_entry entry1 # =&gt; 1
+
+  entry2 = Entry.new
+  entry2.add_string(&quot;body&quot;, &quot;goodbye bob&quot;)
+  docid2 = index.add_entry entry2 # =&gt; 2
+
+  q1 = Query.new &quot;body&quot;, &quot;bob&quot;
+  p index.search(q1) # =&gt; [2, 1]
+
+  q2 = q1.and(Query.new(&quot;body&quot;, &quot;hello&quot;))
+  p index.search(q2) # =&gt; [2]
+</pre>
+<h2>A note on concurrency:</h2>
+<p>
+<a href="Whistlepig.html">Whistlepig</a> is currently single-process and
+single-thread only. However, it is built with multi-process access in mind.
+Per-segment single-writer, multi-reader support is planned in the near
+future. Multi-writer support can be accomplished via index striping and is
+planned for the distant future.
+</p>
+<p>
+Please send bug reports and comments to:
+wmorgan-whistlepig-design@masanjin.net.
+</p>
+
+	</div>
+
+	<div id="validator-badges">
+		<p><small><a href="http://validator.w3.org/check/referer">[Validate]</a></small></p>
+		<p><small>Generated with the <a href="http://deveiate.org/projects/Darkfish-Rdoc/">Darkfish
+			Rdoc Generator</a> 1.1.6</small>.</p>
+	</div>
+</body>
+</html>
+

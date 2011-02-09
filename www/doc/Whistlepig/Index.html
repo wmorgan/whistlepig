@@ -1,0 +1,838 @@
+<?xml version="1.0" encoding="utf8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+	<meta content="text/html; charset=utf8" http-equiv="Content-Type" />
+
+	<title>Class: Whistlepig::Index</title>
+
+	<link rel="stylesheet" href="../rdoc.css" type="text/css" media="screen" />
+
+	<script src="../js/jquery.js" type="text/javascript"
+		charset="utf-8"></script>
+	<script src="../js/thickbox-compressed.js" type="text/javascript"
+		charset="utf-8"></script>
+	<script src="../js/quicksearch.js" type="text/javascript"
+		charset="utf-8"></script>
+	<script src="../js/darkfish.js" type="text/javascript"
+		charset="utf-8"></script>
+
+</head>
+<body class="class">
+
+	<div id="metadata">
+		<div id="home-metadata">
+			<div id="home-section" class="section">
+        <h3 class="section-header">
+          <a href="../index.html">Home</a>
+          <a href="../index.html#classes">Classes</a>
+          <a href="../index.html#methods">Methods</a>
+        </h3>
+			</div>
+		</div>
+
+		<div id="file-metadata">
+			<div id="file-list-section" class="section">
+				<h3 class="section-header">In Files</h3>
+				<div class="section-body">
+					<ul>
+					
+						<li><a href="../ext/whistlepig/whistlepigc_c.html?TB_iframe=true&amp;height=550&amp;width=785"
+							class="thickbox" title="ext/whistlepig/whistlepigc.c">ext/whistlepig/whistlepigc.c</a></li>
+					
+						<li><a href="../lib/whistlepig_rb.html?TB_iframe=true&amp;height=550&amp;width=785"
+							class="thickbox" title="lib/whistlepig.rb">lib/whistlepig.rb</a></li>
+					
+					</ul>
+				</div>
+			</div>
+
+			
+		</div>
+
+		<div id="class-metadata">
+
+			<!-- Parent Class -->
+			
+			<div id="parent-class-section" class="section">
+				<h3 class="section-header">Parent</h3>
+				
+				<p class="link">Object</p>
+				
+			</div>
+			
+
+			<!-- Namespace Contents -->
+			
+
+			<!-- Method Quickref -->
+			
+			<div id="method-list-section" class="section">
+				<h3 class="section-header">Methods</h3>
+				<ul class="link-list">
+					
+					<li><a href="#method-c-create">::create</a></li>
+					
+					<li><a href="#method-c-delete%21">::delete!</a></li>
+					
+					<li><a href="#method-c-exists%3F">::exists?</a></li>
+					
+					<li><a href="#method-c-load">::load</a></li>
+					
+					<li><a href="#method-c-new">::new</a></li>
+					
+					<li><a href="#method-i-add_entry">#add_entry</a></li>
+					
+					<li><a href="#method-i-add_label">#add_label</a></li>
+					
+					<li><a href="#method-i-close">#close</a></li>
+					
+					<li><a href="#method-i-count">#count</a></li>
+					
+					<li><a href="#method-i-each_result_for">#each_result_for</a></li>
+					
+					<li><a href="#method-i-remove_label">#remove_label</a></li>
+					
+					<li><a href="#method-i-run_query">#run_query</a></li>
+					
+					<li><a href="#method-i-search">#search</a></li>
+					
+					<li><a href="#method-i-setup_query">#setup_query</a></li>
+					
+					<li><a href="#method-i-size">#size</a></li>
+					
+					<li><a href="#method-i-teardown_query">#teardown_query</a></li>
+					
+				</ul>
+			</div>
+			
+
+			<!-- Included Modules -->
+			
+		</div>
+
+		<div id="project-metadata">
+			
+			
+			<div id="fileindex-section" class="section project-section">
+				<h3 class="section-header">Files</h3>
+				<ul>
+				
+					<li class="file"><a href="../README.html">README</a></li>
+				
+				</ul>
+			</div>
+			
+
+			<div id="classindex-section" class="section project-section">
+				<h3 class="section-header">Class Index
+					<span class="search-toggle"><img src="../images/find.png"
+						height="16" width="16" alt="[+]"
+						title="show/hide quicksearch" /></span></h3>
+				<form action="#" method="get" accept-charset="utf-8" class="initially-hidden">
+				<fieldset>
+					<legend>Quicksearch</legend>
+					<input type="text" name="quicksearch" value=""
+						class="quicksearch-field" />
+				</fieldset>
+				</form>
+
+				<ul class="link-list">
+				
+					<li><a href="../Whistlepig.html">Whistlepig</a></li>
+				
+					<li><a href="../Whistlepig/Entry.html">Whistlepig::Entry</a></li>
+				
+					<li><a href="../Whistlepig/Error.html">Whistlepig::Error</a></li>
+				
+					<li><a href="../Whistlepig/Index.html">Whistlepig::Index</a></li>
+				
+					<li><a href="../Whistlepig/ParseError.html">Whistlepig::ParseError</a></li>
+				
+					<li><a href="../Whistlepig/Query.html">Whistlepig::Query</a></li>
+				
+				</ul>
+				<div id="no-class-search-results" style="display: none;">No matching classes.</div>
+			</div>
+
+			
+		</div>
+	</div>
+
+	<div id="documentation">
+		<h1 class="class">Whistlepig::Index</h1>
+
+		<div id="description">
+			<p>
+A full-text index. You can add entries to it, and you can run queries
+against it.
+</p>
+<p>
+To add documents, create <a href="Entry.html">Entry</a> objects and call
+add_entry. Entries represent the document before addition; <a
+href="Index.html#method-i-add_entry">add_entry</a> will return an integer
+docid and the entry can be discarded at that point.
+</p>
+<p>
+To run queries, the simplest option is to call <a
+href="Index.html#method-i-search">Index#search</a> or <a
+href="Index.html#method-i-each_result_for">Index#each_result_for</a>.
+</p>
+<p>
+The more complex option is to use <a
+href="Index.html#method-i-setup_query">setup_query</a>, <a
+href="Index.html#method-i-run_query">run_query</a>, and <a
+href="Index.html#method-i-teardown_query">teardown_query</a>, in that
+order. The advantage of this approach is that <a
+href="Index.html#method-i-run_query">run_query</a> can be called multiple
+times, and each call will return more results, allowing for query
+pagination.
+</p>
+
+		</div>
+
+		<!-- Constants -->
+		
+
+		<!-- Attributes -->
+		
+		<div id="attribute-method-details" class="method-section section">
+			<h3 class="section-header">Attributes</h3>
+
+			
+			<div id="pathname-base-attribute-method" class="method-detail">
+				<a name="pathname_base"></a>
+				
+				<div class="method-heading attribute-method-heading">
+					<span class="method-name">pathname_base</span><span
+						class="attribute-access-type">[R]</span>
+				</div>
+
+				<div class="method-description">
+				
+				
+				
+				</div>
+			</div>
+			
+		</div>
+		
+
+		<!-- Methods -->
+		
+		<div id="public-class-method-details" class="method-section section">
+			<h3 class="section-header">Public Class Methods</h3>
+
+		
+			<div id="create-method" class="method-detail ">
+				<a name="method-c-create"></a>
+
+				<div class="method-heading">
+				
+					<span class="method-callseq">create(pathname_base)</span>
+					<span class="method-click-advice">click to toggle source</span>
+				
+				</div>
+
+				<div class="method-description">
+					
+					<p>
+Creates a new index, raising an error if it already exists. The on-disk
+representation will be multiple files starting with <tt><a
+href="Index.html#pathname_base">pathname_base</a></tt>.
+</p>
+					
+
+					
+					<div class="method-source-code"
+						id="create-source">
+<pre>
+static VALUE index_create(VALUE class, VALUE v_pathname_base) </pre>
+					</div>
+					
+				</div>
+
+				
+
+				
+			</div>
+
+		
+			<div id="delete--method" class="method-detail ">
+				<a name="method-c-delete%21"></a>
+
+				<div class="method-heading">
+				
+					<span class="method-callseq">delete!(pathname_base)</span>
+					<span class="method-click-advice">click to toggle source</span>
+				
+				</div>
+
+				<div class="method-description">
+					
+					<p>
+Deletes the index with base pathname <tt><a
+href="Index.html#pathname_base">pathname_base</a></tt> from disk. Does
+nothing if the index does not exist. If that index is currently loaded in
+memory, expect may to see segfaults when you try to access it.
+</p>
+					
+
+					
+					<div class="method-source-code"
+						id="delete--source">
+<pre>
+static VALUE index_delete(VALUE class, VALUE v_pathname_base) </pre>
+					</div>
+					
+				</div>
+
+				
+
+				
+			</div>
+
+		
+			<div id="exists--method" class="method-detail ">
+				<a name="method-c-exists%3F"></a>
+
+				<div class="method-heading">
+				
+					<span class="method-callseq">exists?(pathname_base)</span>
+					<span class="method-click-advice">click to toggle source</span>
+				
+				</div>
+
+				<div class="method-description">
+					
+					<p>
+Returns true iff an index with base pathname of <tt><a
+href="Index.html#pathname_base">pathname_base</a></tt> exists on disk.
+</p>
+					
+
+					
+					<div class="method-source-code"
+						id="exists--source">
+<pre>
+static VALUE index_exists(VALUE class, VALUE v_pathname_base) </pre>
+					</div>
+					
+				</div>
+
+				
+
+				
+			</div>
+
+		
+			<div id="load-method" class="method-detail ">
+				<a name="method-c-load"></a>
+
+				<div class="method-heading">
+				
+					<span class="method-callseq">load(pathname_base)</span>
+					<span class="method-click-advice">click to toggle source</span>
+				
+				</div>
+
+				<div class="method-description">
+					
+					<p>
+Loads a new index, raising an error if it doesn&#8217;t exists. The on-disk
+* representation will be multiple files starting with <tt><a
+href="Index.html#pathname_base">pathname_base</a></tt>.
+</p>
+					
+
+					
+					<div class="method-source-code"
+						id="load-source">
+<pre>
+static VALUE index_load(VALUE class, VALUE v_pathname_base) </pre>
+					</div>
+					
+				</div>
+
+				
+
+				
+			</div>
+
+		
+			<div id="new-method" class="method-detail ">
+				<a name="method-c-new"></a>
+
+				<div class="method-heading">
+				
+					<span class="method-callseq">new(pathname_base)</span>
+					<span class="method-click-advice">click to toggle source</span>
+				
+				</div>
+
+				<div class="method-description">
+					
+					<p>
+Creates or loads a new index. The on-disk representation will be multiple
+files starting * with <tt><a
+href="Index.html#pathname_base">pathname_base</a></tt>.
+</p>
+<p>
+The index may be later be explicitly closed with <a
+href="Index.html#method-i-close">Index#close</a>. It will also be
+automatically closed when Ruby exits.
+</p>
+					
+
+					
+					<div class="method-source-code"
+						id="new-source">
+<pre>
+static VALUE index_new(VALUE class, VALUE v_pathname_base) </pre>
+					</div>
+					
+				</div>
+
+				
+
+				
+			</div>
+
+		
+		</div>
+	
+		<div id="public-instance-method-details" class="method-section section">
+			<h3 class="section-header">Public Instance Methods</h3>
+
+		
+			<div id="add-entry-method" class="method-detail ">
+				<a name="method-i-add_entry"></a>
+
+				<div class="method-heading">
+				
+					<span class="method-callseq">add_entry(entry)</span>
+					<span class="method-click-advice">click to toggle source</span>
+				
+				</div>
+
+				<div class="method-description">
+					
+					<p>
+Adds the entry <tt>entry</tt> to the index. Returns the document id
+corresponding to this entry.
+</p>
+					
+
+					
+					<div class="method-source-code"
+						id="add-entry-source">
+<pre>
+static VALUE index_add_entry(VALUE self, VALUE v_entry) </pre>
+					</div>
+					
+				</div>
+
+				
+
+				
+			</div>
+
+		
+			<div id="add-label-method" class="method-detail ">
+				<a name="method-i-add_label"></a>
+
+				<div class="method-heading">
+				
+					<span class="method-callseq">add_label(doc_id, label)</span>
+					<span class="method-click-advice">click to toggle source</span>
+				
+				</div>
+
+				<div class="method-description">
+					
+					<p>
+Adds the label <tt>label</tt> to the document corresponding to doc id
+<tt>doc_id</tt> in the index. <tt>label</tt> must be a String. If the label
+has already been added to the document, does nothing.
+</p>
+					
+
+					
+					<div class="method-source-code"
+						id="add-label-source">
+<pre>
+static VALUE index_add_label(VALUE self, VALUE v_doc_id, VALUE v_label) </pre>
+					</div>
+					
+				</div>
+
+				
+
+				
+			</div>
+
+		
+			<div id="close-method" class="method-detail ">
+				<a name="method-i-close"></a>
+
+				<div class="method-heading">
+				
+					<span class="method-name">close</span><span
+						class="method-args">()</span>
+					<span class="method-click-advice">click to toggle source</span>
+				
+				</div>
+
+				<div class="method-description">
+					
+					<p>
+Closes the index, flushing all changes to disk. Future calls to this index
+may result in a segfault.
+</p>
+					
+
+					
+					<div class="method-source-code"
+						id="close-source">
+<pre>
+static VALUE index_close(VALUE self) </pre>
+					</div>
+					
+				</div>
+
+				
+
+				
+			</div>
+
+		
+			<div id="count-method" class="method-detail ">
+				<a name="method-i-count"></a>
+
+				<div class="method-heading">
+				
+					<span class="method-callseq">count(query)</span>
+					<span class="method-click-advice">click to toggle source</span>
+				
+				</div>
+
+				<div class="method-description">
+					
+					<p>
+Returns the number of entries matched by <tt>query</tt>, which should be a
+<a href="Query.html">Query</a> object. Note that in the current
+implementation, this is almost as expensive as retrieving all the results
+directly.
+</p>
+					
+
+					
+					<div class="method-source-code"
+						id="count-source">
+<pre>
+static VALUE index_count(VALUE self, VALUE v_query) </pre>
+					</div>
+					
+				</div>
+
+				
+
+				
+			</div>
+
+		
+			<div id="each-result-for-method" class="method-detail ">
+				<a name="method-i-each_result_for"></a>
+
+				<div class="method-heading">
+				
+					<span class="method-name">each_result_for</span><span
+						class="method-args">(query, chunk_size=10)</span>
+					<span class="method-click-advice">click to toggle source</span>
+				
+				</div>
+
+				<div class="method-description">
+					
+					<p>
+Runs a query and yield each matching doc id. Handles the mechanics of
+setting up and tearing down the query.
+</p>
+					
+
+					
+					<div class="method-source-code"
+						id="each-result-for-source">
+<pre>
+    <span class="ruby-comment cmt"># File lib/whistlepig.rb, line 21</span>
+21:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">each_result_for</span> <span class="ruby-identifier">query</span>, <span class="ruby-identifier">chunk_size</span>=<span class="ruby-value">10</span>
+22:       <span class="ruby-identifier">setup_query</span> <span class="ruby-identifier">query</span>
+23:       <span class="ruby-keyword kw">begin</span>
+24:         <span class="ruby-keyword kw">while</span> <span class="ruby-keyword kw">true</span>
+25:           <span class="ruby-identifier">results</span> = <span class="ruby-identifier">run_query</span> <span class="ruby-identifier">query</span>, <span class="ruby-identifier">chunk_size</span>
+26:           <span class="ruby-identifier">results</span>.<span class="ruby-identifier">each</span> { <span class="ruby-operator">|</span><span class="ruby-identifier">r</span><span class="ruby-operator">|</span> <span class="ruby-keyword kw">yield</span> <span class="ruby-identifier">r</span> }
+27:           <span class="ruby-keyword kw">break</span> <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">results</span>.<span class="ruby-identifier">size</span> <span class="ruby-operator">&lt;</span> <span class="ruby-identifier">chunk_size</span>
+28:         <span class="ruby-keyword kw">end</span>
+29:       <span class="ruby-keyword kw">ensure</span>
+30:         <span class="ruby-identifier">teardown_query</span> <span class="ruby-identifier">query</span>
+31:       <span class="ruby-keyword kw">end</span>
+32:       <span class="ruby-keyword kw">self</span>
+33:     <span class="ruby-keyword kw">end</span></pre>
+					</div>
+					
+				</div>
+
+				
+
+				
+			</div>
+
+		
+			<div id="remove-label-method" class="method-detail ">
+				<a name="method-i-remove_label"></a>
+
+				<div class="method-heading">
+				
+					<span class="method-callseq">remove_label(doc_id, label)</span>
+					<span class="method-click-advice">click to toggle source</span>
+				
+				</div>
+
+				<div class="method-description">
+					
+					<p>
+Removes the label <tt>label</tt> from the document corresponding to doc id
+<tt>doc_id</tt> in the index. <tt>label</tt> must be a String. If the label
+has not been added to the document, does nothing.
+</p>
+					
+
+					
+					<div class="method-source-code"
+						id="remove-label-source">
+<pre>
+static VALUE index_remove_label(VALUE self, VALUE v_doc_id, VALUE v_label) </pre>
+					</div>
+					
+				</div>
+
+				
+
+				
+			</div>
+
+		
+			<div id="run-query-method" class="method-detail ">
+				<a name="method-i-run_query"></a>
+
+				<div class="method-heading">
+				
+					<span class="method-callseq">run_query(query, max_num_results)</span>
+					<span class="method-click-advice">click to toggle source</span>
+				
+				</div>
+
+				<div class="method-description">
+					
+					<p>
+Runs a query which has been first passed to <a
+href="Index.html#method-i-setup_query">setup_query</a>, and returns an
+array of at most <tt>max_num_results</tt> doc ids. Can be called multiple
+times to retrieve successive results from the query. The query must have
+been passed to <a href="Index.html#method-i-setup_query">setup_query</a>
+first, or terrible things will happen. The query must be passed to <a
+href="Index.html#method-i-teardown_query">teardown_query</a> when done, or
+memory leaks will occur.
+</p>
+					
+
+					
+					<div class="method-source-code"
+						id="run-query-source">
+<pre>
+static VALUE index_run_query(VALUE self, VALUE v_query, VALUE v_max_num_results) </pre>
+					</div>
+					
+				</div>
+
+				
+
+				
+			</div>
+
+		
+			<div id="search-method" class="method-detail ">
+				<a name="method-i-search"></a>
+
+				<div class="method-heading">
+				
+					<span class="method-name">search</span><span
+						class="method-args">(query, max_results=nil)</span>
+					<span class="method-click-advice">click to toggle source</span>
+				
+				</div>
+
+				<div class="method-description">
+					
+					<p>
+Convenience method. Runs a query and returns up to <tt>max_results</tt>
+matching doc ids. Handles the mechanics of setting up and tearing down the
+query.
+</p>
+					
+
+					
+					<div class="method-source-code"
+						id="search-source">
+<pre>
+    <span class="ruby-comment cmt"># File lib/whistlepig.rb, line 38</span>
+38:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">search</span> <span class="ruby-identifier">query</span>, <span class="ruby-identifier">max_results</span>=<span class="ruby-keyword kw">nil</span>
+39:       <span class="ruby-identifier">setup_query</span> <span class="ruby-identifier">query</span>
+40:       <span class="ruby-identifier">ret</span> = []
+41:       <span class="ruby-identifier">num_per_call</span> = <span class="ruby-identifier">max_results</span> <span class="ruby-operator">||</span> <span class="ruby-value">100</span>
+42:       <span class="ruby-keyword kw">begin</span>
+43:         <span class="ruby-keyword kw">while</span> <span class="ruby-keyword kw">true</span>
+44:           <span class="ruby-identifier">results</span> = <span class="ruby-identifier">run_query</span> <span class="ruby-identifier">query</span>, <span class="ruby-identifier">num_per_call</span>
+45:           <span class="ruby-identifier">ret</span> <span class="ruby-operator">+=</span> <span class="ruby-identifier">results</span>
+46:           <span class="ruby-keyword kw">break</span> <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">max_results</span> <span class="ruby-operator">||</span> <span class="ruby-identifier">results</span>.<span class="ruby-identifier">size</span> <span class="ruby-operator">&lt;</span> <span class="ruby-identifier">num_per_call</span>
+47:         <span class="ruby-keyword kw">end</span>
+48:       <span class="ruby-keyword kw">ensure</span>
+49:         <span class="ruby-identifier">teardown_query</span> <span class="ruby-identifier">query</span>
+50:       <span class="ruby-keyword kw">end</span>
+51: 
+52:       <span class="ruby-identifier">ret</span>
+53:     <span class="ruby-keyword kw">end</span></pre>
+					</div>
+					
+				</div>
+
+				
+
+				
+			</div>
+
+		
+			<div id="setup-query-method" class="method-detail ">
+				<a name="method-i-setup_query"></a>
+
+				<div class="method-heading">
+				
+					<span class="method-callseq">setup_query(query)</span>
+					<span class="method-click-advice">click to toggle source</span>
+				
+				</div>
+
+				<div class="method-description">
+					
+					<p>
+Initializes query for use with run_query. If you do not call <a
+href="Index.html#method-i-teardown_query">teardown_query</a> on this query
+later, you will leak memory.
+</p>
+					
+
+					
+					<div class="method-source-code"
+						id="setup-query-source">
+<pre>
+static VALUE index_setup_query(VALUE self, VALUE v_query) </pre>
+					</div>
+					
+				</div>
+
+				
+
+				
+			</div>
+
+		
+			<div id="size-method" class="method-detail ">
+				<a name="method-i-size"></a>
+
+				<div class="method-heading">
+				
+					<span class="method-name">size</span><span
+						class="method-args">()</span>
+					<span class="method-click-advice">click to toggle source</span>
+				
+				</div>
+
+				<div class="method-description">
+					
+					<p>
+Returns the number of entries in the index.
+</p>
+					
+
+					
+					<div class="method-source-code"
+						id="size-source">
+<pre>
+static VALUE index_size(VALUE self) </pre>
+					</div>
+					
+				</div>
+
+				
+
+				
+			</div>
+
+		
+			<div id="teardown-query-method" class="method-detail ">
+				<a name="method-i-teardown_query"></a>
+
+				<div class="method-heading">
+				
+					<span class="method-callseq">teardown_query(query)</span>
+					<span class="method-click-advice">click to toggle source</span>
+				
+				</div>
+
+				<div class="method-description">
+					
+					<p>
+Releases any held state used by the query, if it has been first passed to
+setup_query. If you call <a
+href="Index.html#method-i-run_query">run_query</a> on this query after
+calling this function, terrible things will happen.
+</p>
+					
+
+					
+					<div class="method-source-code"
+						id="teardown-query-source">
+<pre>
+static VALUE index_teardown_query(VALUE self, VALUE v_query) </pre>
+					</div>
+					
+				</div>
+
+				
+
+				
+			</div>
+
+		
+		</div>
+	
+
+	</div>
+
+
+	<div id="rdoc-debugging-section-dump" class="debugging-section">
+	
+		<p>Disabled; run with --debug to generate this.</p>
+	
+	</div>
+
+	<div id="validator-badges">
+		<p><small><a href="http://validator.w3.org/check/referer">[Validate]</a></small></p>
+		<p><small>Generated with the <a href="http://deveiate.org/projects/Darkfish-Rdoc/">Darkfish
+			Rdoc Generator</a> 1.1.6</small>.</p>
+	</div>
+
+</body>
+</html>
+

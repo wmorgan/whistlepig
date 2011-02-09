@@ -1,0 +1,5 @@
+require "whistlepig/email/decoder"
+require "whistlepig/email/person"
+require "whistlepig/email/message"
+require "whistlepig/email/mbox-splitter"
+require "whistlepig/email/store"

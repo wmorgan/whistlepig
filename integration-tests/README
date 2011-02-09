@@ -1,0 +1,5 @@
+Functional tests are run against a million-line subset of the enron corpus.
+Obtain the (7.5mb compressed) subcorpus from http://masanjin.net/whistlepig/.
+
+If you're interested in the full enron corpus, you can find it here:
+http://www.cs.cmu.edu/~enron/

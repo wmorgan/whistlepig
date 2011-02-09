@@ -1,0 +1,86 @@
+= Whistlepig
+
+Whistlepig is a minimalist realtime full-text search index. Its goal is to be
+as small and feature-free as possible, while still remaining useful, performant
+and scalable to large corpora. If you want realtime full-text search without
+the frills, Whistlepig may be for you.
+
+Whistlepig is written in ANSI C99. It currently provides a C API and Ruby
+bindings.
+
+Latest version: 0.1, released 2010-02-08.
+        Status: alpha
+          News: http://all-thing.net/label/whistlepig/
+      Homepage: http://masanjin.net/whistlepig/
+
+= Getting it
+
+       Tarball:  whistlepig-0.1.tar.gz
+       Rubygem:  gem install whistlepig
+           Git:  git clone git://masanjin.net/whistlepig/
+
+= Realtime search
+
+Roughly speaking, realtime search means:
+- documents are available to to queries immediately after indexing, without
+  any further index merging steps; and
+- later documents are more important than earlier documents.
+
+Whistlepig takes these principles to an extreme. In particular:
+- It only returns documents in the reverse order to which they were added
+  (i.e. LIFO order), and performs no ranking, reordering, or scoring.
+- It only supports incremental indexing. There is no notion of batch indexing
+  or index merging.
+- It does not support document deletion or modification (except in the
+  special case of labels; see below).
+- In only supports in-memory indexes.
+
+Features that Whistlepig does provide:
+- Incremental indexing. Updates to the index are immediately available to
+  readers.
+- Fielded terms with arbitrary fields.
+- A full query language and parser with conjunctions, disjunctions, phrases,
+  negations, grouping, and nesting.
+- Labels: arbitrary tokens which can be added to and removed from documents
+  at any point, and incorporated into search queries. (This is the only
+  mutable aspect of a document once it has been indexed.)
+- Early query termination.
+- Resumable queries.
+- A tiny, < 3 KLOC ANSI C99 implementation.
+
+== Synopsis (using Ruby bindings)
+
+  require 'rubygems'
+  require 'whistlepig'
+
+  include Whistlepig
+
+  index = Index.new "index"
+
+  entry1 = Entry.new
+  entry1.add_string "body", "hello there bob"
+  docid1 = index.add_entry entry1              # => 1
+
+  entry2 = Entry.new
+  entry2.add_string "body", "goodbye bob"
+  docid2 = index.add_entry entry2              # => 2
+
+  q1 = Query.new "body", "bob"
+  results1 = index.search q1                   # => [2, 1]
+
+  q2 = q1.and Query.new("body", "hello")
+  results2 = index.search q2                   # => [1]
+
+  index.add_label docid2, "funny"
+
+  q3 = Query.new "body", "bob ~funny"
+  results3 = index.search q3                   # => [2]
+
+== A note on concurrency:
+
+Whistlepig is currently single-process and single-thread only. However, it is
+built with multi-process access in mind. Per-segment single-writer,
+multi-reader support is planned in the near future. Multi-writer support can be
+accomplished via index striping and is planned for the distant future.
+
+Please send bug reports and comments to: wmorgan-whistlepig-design@masanjin.net.
