@@ -13,7 +13,7 @@ wp_error* mmap_obj_create(mmap_obj* o, const char* magic, const char* pathname, 
   o->fd = open(pathname, O_EXCL | O_CREAT | O_RDWR, 0640);
   if(o->fd == -1) RAISE_SYSERROR("cannot create %s", pathname);
 
-  uint32_t size = initial_size + sizeof(mmap_obj_header);
+  uint32_t size = initial_size + (uint32_t)sizeof(mmap_obj_header);
   DEBUG("creating %s with %u + %u = %u bytes for %s object", pathname, initial_size, sizeof(mmap_obj_header), size, magic);
   lseek(o->fd, size - 1, SEEK_SET);
   ssize_t num_bytes = write(o->fd, "", 1);
@@ -39,7 +39,7 @@ wp_error* mmap_obj_load(mmap_obj* o, const char* magic, const char* pathname) {
 
   RELAY_ERROR(validate(o->header, magic));
 
-  uint32_t size = o->header->size + sizeof(mmap_obj_header);
+  uint32_t size = o->header->size + (uint32_t)sizeof(mmap_obj_header);
   DEBUG("full size is %u bytes (including %u-byte header)", size, sizeof(mmap_obj_header));
   if(munmap(o->header, sizeof(mmap_obj_header)) == -1) RAISE_SYSERROR("munmap");
 
@@ -54,7 +54,7 @@ wp_error* mmap_obj_resize(mmap_obj* o, uint32_t data_size) {
   DEBUG("going to expand from %u to %u bytes. current header is at %p", o->header->size, data_size, o->header);
 
   if(munmap(o->header, sizeof(mmap_obj_header) + o->header->size) == -1) RAISE_SYSERROR("munmap");
-  uint32_t size = data_size + sizeof(mmap_obj_header);
+  uint32_t size = data_size + (uint32_t)sizeof(mmap_obj_header);
 
   lseek(o->fd, size - 1, SEEK_SET);
   ssize_t num_bytes = write(o->fd, "", 1);

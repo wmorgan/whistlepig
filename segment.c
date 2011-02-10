@@ -241,8 +241,8 @@ wp_error* wp_segment_ensure_fit(wp_segment* seg, uint32_t postings_bytes, uint32
 
 static uint32_t size_of(uint32_t num_positions, pos_t positions[]) {
   (void)positions;
-  uint32_t position_size = sizeof(pos_t) * num_positions;
-  uint32_t size = sizeof(posting) - sizeof(pos_t*) + position_size;
+  uint32_t position_size = (uint32_t)sizeof(pos_t) * num_positions;
+  uint32_t size = (uint32_t)sizeof(posting) - (uint32_t)sizeof(pos_t*) + position_size;
 
   return size;
 }
@@ -253,23 +253,22 @@ wp_error* wp_segment_sizeof_posarray(wp_segment* seg, uint32_t num_positions, po
   return NO_ERROR;
 }
 
-#define BITMASK 0x7f
-
+#define VALUE_BITMASK 0x7f
 RAISING_STATIC(write_multibyte(uint8_t* location, uint32_t val, uint32_t* size)) {
   //printf("xx writing %u to position %p as:\n", val, location);
   uint8_t* start = location;
 
-  while(val > BITMASK) {
-    uint8_t c = (val & BITMASK) | 0x80;
+  while(val > VALUE_BITMASK) {
+    uint8_t c = (val & VALUE_BITMASK) | 0x80;
     *location = c;
     //printf("xx %d = %d | %d at %p\n", c, val & BITMASK, 0x80, location);
     location++;
     val >>= 7;
   }
-  uint8_t c = (val & BITMASK);
+  uint8_t c = (val & VALUE_BITMASK);
   *location = c;
   //printf("xx %d at %p\n", c, location);
-  *size = location + 1 - start;
+  *size = (uint32_t)(location + 1 - start);
   //printf("xx total %u bytes\n", *size);
   return NO_ERROR;
 }
@@ -287,7 +286,7 @@ RAISING_STATIC(read_multibyte(uint8_t* location, uint32_t* val, uint32_t* size))
   }
   *val |= *location << shift;
   //printf("yy read final byte %d at %p\n", *location, location);
-  *size = location + 1 - start;
+  *size = (uint32_t)(location + 1 - start);
   //printf("yy total %d bytes, val = %d\n\n", *size, *val);
   return NO_ERROR;
 }
@@ -522,7 +521,7 @@ wp_error* wp_segment_add_label(wp_segment* s, const char* label, docid_t doc_id)
   po->doc_id = doc_id;
   po->next_offset = next_offset;
 
-  pr->postings_head += sizeof(label_posting);
+  pr->postings_head += (uint32_t)sizeof(label_posting);
   DEBUG("label postings list head now at %u", pr->postings_head);
 
   // really finally, update either the previous offset or the tail pointer

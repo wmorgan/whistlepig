@@ -292,3 +292,11 @@ uint64_t wp_index_num_docs(wp_index* index) {
 
   return ret;
 }
+
+// insane. but i'm putting this here. not defined in c99. don't want to make a
+// "utils.c" or "compat.c" or whatever just yet.
+char* strdup(const char* old) {
+  size_t len = strlen(old) + 1;
+  char *new = malloc(len * sizeof(char));
+  return memcpy(new, old, len);
+}
