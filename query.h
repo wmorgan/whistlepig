@@ -73,6 +73,6 @@ wp_query* wp_query_set_all_child_fields(wp_query* q, const char* field);
 void wp_query_free(wp_query* q);
 
 // public: build a string representation of a query by writing at most n chars to buf
-int wp_query_to_s(wp_query* q, size_t n, char* buf);
+size_t wp_query_to_s(wp_query* q, size_t n, char* buf);
 
 #endif

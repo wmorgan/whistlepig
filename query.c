@@ -1,3 +1,4 @@
+#include "whistlepig.h"
 #include "query.h"
 
 static wp_query* wp_query_new() {
@@ -9,12 +10,6 @@ static wp_query* wp_query_new() {
   ret->search_data = NULL;
 
   return ret;
-}
-
-static char* strdup(const char* old) { // sigh... not in c99
-  size_t len = strlen(old) + 1;
-  char *new = malloc(len * sizeof(char));
-  return memcpy(new, old, len);
 }
 
 wp_query* wp_query_clone(wp_query* other) {
@@ -128,13 +123,13 @@ static int subquery_to_s(wp_query* q, size_t n, char* buf) {
     buf += wp_query_to_s(child, n - (buf - orig_buf), buf);
   }
 
-  return buf - orig_buf;
+  return (int)(buf - orig_buf);
 }
 
 #define min(a, b) (a < b ? a : b)
 
-int wp_query_to_s(wp_query* q, size_t n, char* buf) {
-  int ret;
+size_t wp_query_to_s(wp_query* q, size_t n, char* buf) {
+  size_t ret;
   char* orig_buf = buf;
 
   if(q->type == WP_QUERY_EMPTY) {

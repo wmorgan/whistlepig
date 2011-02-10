@@ -2,14 +2,6 @@
 #include "whistlepig.h"
 #include "timer.h"
 
-/*
-static char* my_strdup(const char* old) { // wtf
-  size_t len = strlen(old) + 1;
-  char *new = malloc(len * sizeof(char));
-  return (char *)memcpy(new, old, len);
-}
-*/
-
 typedef struct offset {
   long start_offset;
   long end_offset;
@@ -41,7 +33,7 @@ static khash_t(offsets)* load_offsets(const char* base_path) {
   while(!feof(f)) {
     offset o;
 
-    int read;
+    size_t read;
     read = fread(&doc_id, sizeof(doc_id), 1, f);
     if(read == 1) read = fread(&o.start_offset, sizeof(long), 1, f);
     if(read == 1) read = fread(&o.end_offset, sizeof(long), 1, f);

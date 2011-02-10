@@ -22,19 +22,19 @@ LASTWORDCHAR  [[:alnum:]_#@-]
 %%
 \-?[[:digit:]]+(\.([[:digit:]]+)?)? {
   yyextra->start = yyextra->end;
-  yyextra->end += yyleng;
+  yyextra->end += (pos_t)yyleng;
   return TOK_NUMBER;
 }
 
 {FIRSTWORDCHAR}{INNERWORDCHAR}*{LASTWORDCHAR} {
   yyextra->start = yyextra->end;
-  yyextra->end += yyleng;
+  yyextra->end += (pos_t)yyleng;
   return TOK_WORD;
 }
 
 {FIRSTWORDCHAR}{LASTWORDCHAR}? {
   yyextra->start = yyextra->end;
-  yyextra->end += yyleng;
+  yyextra->end += (pos_t)yyleng;
   return TOK_WORD;
 }
 

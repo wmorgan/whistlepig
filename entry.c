@@ -46,7 +46,7 @@ wp_entry* wp_entry_new() {
   return ret;
 }
 
-RAISING_STATIC(add_token(wp_entry* entry, const char* field, const char* term, int field_len, int term_len)) {
+RAISING_STATIC(add_token(wp_entry* entry, const char* field, const char* term, size_t field_len, size_t term_len)) {
   fielded_term ft;
   int status;
 
@@ -89,7 +89,7 @@ uint32_t wp_entry_size(wp_entry* entry) {
 
 RAISING_STATIC(add_from_lexer(wp_entry* entry, yyscan_t* scanner, const char* field)) {
   int token_type;
-  int field_len = strlen(field);
+  size_t field_len = strlen(field);
 
   do {
     token_type = yylex(*scanner);

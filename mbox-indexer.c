@@ -8,8 +8,8 @@
 
 #define BUF_SIZE 2048
 
-static void make_lowercase(char* c, int len) {
-  for(int i = 0; i < len; i++) c[i] = tolower(c[i]);
+static void make_lowercase(char* c, size_t len) {
+  for(size_t i = 0; i < len; i++) c[i] = tolower(c[i]);
 }
 
 int main(int argc, char* argv[]) {
@@ -69,7 +69,7 @@ int main(int argc, char* argv[]) {
       chunk_bytes += len;
 
       if(!strncmp(buf, "From ", 5)) break;
-      if(index(buf, ' ') == NULL) continue; // hack -- skip non-text, e.g. MIME attachment blocks
+      if(strchr(buf, ' ') == NULL) continue; // hack -- skip non-text, e.g. MIME attachment blocks
 
       make_lowercase(buf, len);
       DIE_IF_ERROR(wp_entry_add_string(entry, "body", buf));

@@ -6,11 +6,11 @@ void stringpool_init(stringpool* p) {
 }
 
 uint32_t stringpool_size(stringpool* p) {
-  return sizeof(stringpool) + (p->size * sizeof(char));
+  return (uint32_t)sizeof(stringpool) + (p->size * (uint32_t)sizeof(char));
 }
 
 uint32_t stringpool_add(stringpool* p, const char* s) {
-  int len = strlen(s) + 1;
+  uint32_t len = (uint32_t)strlen(s) + 1;
   if((p->next + len) >= p->size) {
     DEBUG("out of space in string pool for %s (len %d, next %d, size %d)", s, len, p->next, p->size);
     return (uint32_t)-1;
@@ -27,11 +27,11 @@ int stringpool_needs_bump(stringpool* p) {
 }
 
 uint32_t stringpool_next_size(stringpool* p) {
-  return sizeof(stringpool) + (2 * (p->size == 0 ? 1 : p->size) * sizeof(char));
+  return (uint32_t)sizeof(stringpool) + (2 * (p->size == 0 ? 1 : p->size) * (uint32_t)sizeof(char));
 }
 
 uint32_t stringpool_initial_size() {
-  return sizeof(stringpool) + INITIAL_POOL_SIZE;
+  return (uint32_t)sizeof(stringpool) + INITIAL_POOL_SIZE;
 }
 
 void stringpool_bump_size(stringpool* p) {

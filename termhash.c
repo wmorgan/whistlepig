@@ -15,10 +15,10 @@ static const uint32_t prime_list[] = {
 #define isempty(flag, i) ((flag[i>>4]>>((i&0xfU)<<1))&2)
 #define isdel(flag, i) ((flag[i>>4]>>((i&0xfU)<<1))&1)
 #define iseither(flag, i) ((flag[i>>4]>>((i&0xfU)<<1))&3)
-#define set_isdel_false(flag, i) (flag[i>>4]&=~(1ul<<((i&0xfU)<<1)))
-#define set_isempty_false(flag, i) (flag[i>>4]&=~(2ul<<((i&0xfU)<<1)))
-#define set_isboth_false(flag, i) (flag[i>>4]&=~(3ul<<((i&0xfU)<<1)))
-#define set_isdel_true(flag, i) (flag[i>>4]|=1ul<<((i&0xfU)<<1))
+#define set_isdel_false(flag, i) (flag[i>>4]&=~(uint32_t)(1ul<<((i&0xfU)<<1)))
+#define set_isempty_false(flag, i) (flag[i>>4]&=~(uint32_t)(2ul<<((i&0xfU)<<1)))
+#define set_isboth_false(flag, i) (flag[i>>4]&=~(uint32_t)(3ul<<((i&0xfU)<<1)))
+#define set_isdel_true(flag, i) (flag[i>>4]|=(uint32_t)(1ul<<((i&0xfU)<<1)))
 
 static const double HASH_UPPER = 0.77;
 
@@ -264,10 +264,10 @@ int termhash_needs_bump(termhash* h) {
 //   n_buckets terms for the keys
 //   n_buckets uint32_t's for the vals (offsets into postings lists)
 static uint32_t size(uint32_t n_buckets) {
-  uint32_t size = sizeof(termhash) +
-    (((n_buckets >> 4) + 1) * sizeof(uint32_t)) +
-    (n_buckets * sizeof(term)) +
-    (n_buckets * sizeof(uint32_t));
+  uint32_t size = (uint32_t)sizeof(termhash) +
+    (((n_buckets >> 4) + 1) * (uint32_t)sizeof(uint32_t)) +
+    (n_buckets * (uint32_t)sizeof(term)) +
+    (n_buckets * (uint32_t)sizeof(uint32_t));
 
   DEBUG("size of a termhash with %u buckets is %lu + %lu + %lu + %lu = %u",
     n_buckets,

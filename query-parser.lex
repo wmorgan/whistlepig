@@ -1,5 +1,6 @@
 %{
 #include <string.h>
+#include "whistlepig.h"
 #include "query-parser.h"
 #include "query-parser.tab.h"
 

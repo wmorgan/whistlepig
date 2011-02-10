@@ -1,3 +1,8 @@
+/* modified by william morgan to cast sizeof() properly.
+   otherwise it has trouble compiling on 64-bit platforms with
+  -Wshorten-64-to-32 enabled.
+*/
+
 /* The MIT License
 
    Copyright (c) 2008, by Attractive Chaos <attractivechaos@aol.co.uk>
@@ -102,10 +107,10 @@ static const uint32_t __ac_prime_list[__ac_HASH_PRIME_SIZE] =
 #define __ac_isempty(flag, i) ((flag[i>>4]>>((i&0xfU)<<1))&2)
 #define __ac_isdel(flag, i) ((flag[i>>4]>>((i&0xfU)<<1))&1)
 #define __ac_iseither(flag, i) ((flag[i>>4]>>((i&0xfU)<<1))&3)
-#define __ac_set_isdel_false(flag, i) (flag[i>>4]&=~(1ul<<((i&0xfU)<<1)))
-#define __ac_set_isempty_false(flag, i) (flag[i>>4]&=~(2ul<<((i&0xfU)<<1)))
-#define __ac_set_isboth_false(flag, i) (flag[i>>4]&=~(3ul<<((i&0xfU)<<1)))
-#define __ac_set_isdel_true(flag, i) (flag[i>>4]|=1ul<<((i&0xfU)<<1))
+#define __ac_set_isdel_false(flag, i) (flag[i>>4]&=~(uint32_t)(1ul<<((i&0xfU)<<1)))
+#define __ac_set_isempty_false(flag, i) (flag[i>>4]&=~(uint32_t)(2ul<<((i&0xfU)<<1)))
+#define __ac_set_isboth_false(flag, i) (flag[i>>4]&=~(uint32_t)(3ul<<((i&0xfU)<<1)))
+#define __ac_set_isdel_true(flag, i) (flag[i>>4]|=(uint32_t)(1ul<<((i&0xfU)<<1)))
 
 static const double __ac_HASH_UPPER = 0.77;
 

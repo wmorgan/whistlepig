@@ -15,10 +15,10 @@ static const uint32_t prime_list[] = {
 #define isempty(flag, i) ((flag[i>>4]>>((i&0xfU)<<1))&2)
 #define isdel(flag, i) ((flag[i>>4]>>((i&0xfU)<<1))&1)
 #define iseither(flag, i) ((flag[i>>4]>>((i&0xfU)<<1))&3)
-#define set_isdel_false(flag, i) (flag[i>>4]&=~(1ul<<((i&0xfU)<<1)))
-#define set_isempty_false(flag, i) (flag[i>>4]&=~(2ul<<((i&0xfU)<<1)))
-#define set_isboth_false(flag, i) (flag[i>>4]&=~(3ul<<((i&0xfU)<<1)))
-#define set_isdel_true(flag, i) (flag[i>>4]|=1ul<<((i&0xfU)<<1))
+#define set_isdel_false(flag, i) (flag[i>>4]&=~(uint32_t)(1ul<<((i&0xfU)<<1)))
+#define set_isempty_false(flag, i) (flag[i>>4]&=~(uint32_t)(2ul<<((i&0xfU)<<1)))
+#define set_isboth_false(flag, i) (flag[i>>4]&=~(uint32_t)(3ul<<((i&0xfU)<<1)))
+#define set_isdel_true(flag, i) (flag[i>>4]|=(uint32_t)(1ul<<((i&0xfU)<<1)))
 
 static const double HASH_UPPER = 0.77;
 
@@ -234,9 +234,9 @@ int stringmap_needs_bump(stringmap* h) {
 //   ((n_buckets >> 4) + 1) uint32_t's for the flags
 //   n_buckets uint32_t for the keys
 static uint32_t size(uint32_t n_buckets) {
-  uint32_t size = sizeof(stringmap) +
-    (((n_buckets >> 4) + 1) * sizeof(uint32_t)) +
-    (n_buckets * sizeof(uint32_t));
+  uint32_t size = (uint32_t)sizeof(stringmap) +
+    (((n_buckets >> 4) + 1) * (uint32_t)sizeof(uint32_t)) +
+    (n_buckets * (uint32_t)sizeof(uint32_t));
   return size;
 }
 
