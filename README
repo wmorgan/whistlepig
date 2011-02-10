@@ -8,7 +8,7 @@ the frills, Whistlepig may be for you.
 Whistlepig is written in ANSI C99. It currently provides a C API and Ruby
 bindings.
 
-Latest version: 0.1, released 2011-02-08.
+Latest version: 0.2, released 2011-02-09.
         Status: alpha
           News: http://all-thing.net/label/whistlepig/
       Homepage: http://masanjin.net/whistlepig/
@@ -16,7 +16,7 @@ Latest version: 0.1, released 2011-02-08.
 
 = Getting it
 
-       Tarball:  http://masanjin.net/whistlepig/whistlepig-0.1.tar.gz
+       Tarball:  http://masanjin.net/whistlepig/whistlepig-0.2.tar.gz
        Rubygem:  gem install whistlepig
            Git:  git clone git://github.com/wmorgan/whistlepig.git
 
