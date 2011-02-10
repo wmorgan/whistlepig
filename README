@@ -75,6 +75,14 @@ Features that Whistlepig does provide:
   q3 = Query.new "body", "bob ~funny"
   results3 = index.search q3                   # => [2]
 
+  entry3 = Entry.new
+  entry3.add_string "body", "hello joe"
+  entry3.add_string "subject", "what do you know?"
+  docid3 = index.add_entry entry3              # => 3
+
+  q4 = Query.new "body", "subject:know hello"
+  results4 = index.search q4                   # => [3]
+
 == A note on concurrency:
 
 Whistlepig is currently single-process and single-thread only. However, it is
