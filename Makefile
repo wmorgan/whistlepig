@@ -12,7 +12,7 @@ ECHO=/bin/echo
 ## stolen from redis
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 OPTIMIZATION?=-O3
-CFLAGS?= -std=c99 $(OPTIMIZATION) -Wall -Wextra -Wwrite-strings -Werror
+CFLAGS?= -std=c99 $(OPTIMIZATION) -Wall -Wextra -Wwrite-strings -Werror -Wpointer-arith -Wwrite-strings -Wno-missing-field-initializers -Wshorten-64-to-32 -Wno-long-long -D_ANSI_SOURCE
 CCLINK?= #-lm -pthread
 CCOPT= $(CFLAGS) $(CCLINK) $(ARCH) $(PROF)
 DEBUG?= -rdynamic -ggdb
