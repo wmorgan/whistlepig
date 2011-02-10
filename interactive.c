@@ -1,3 +1,4 @@
+#include <inttypes.h>
 #include <stdio.h>
 #include "whistlepig.h"
 #include "timer.h"
@@ -114,7 +115,7 @@ int main(int argc, char* argv[]) {
         //if((unsigned int)argc > i + 1) printf("doc %u -> %s", results[i].doc_id, argv[results[i].doc_id]);
         //else printf("doc %u", results[i].doc_id);
 
-        printf("found doc %llu\n", results[i]);
+        printf("found doc %"PRIu64"\n", results[i]);
 
         if(offsets && corpus) {
           khiter_t k = kh_get(offsets, offsets, results[i]);
