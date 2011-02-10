@@ -9,14 +9,6 @@ static VALUE c_query;
 static VALUE c_error;
 static VALUE c_parseerror;
 
-#ifndef _DARWIN_C_SOURCE
-static char* strdup(const char* old) { // making our own!
-  size_t len = strlen(old) + 1;
-  char *new = malloc(len * sizeof(char));
-  return (char *)memcpy(new, old, len);
-}
-#endif
-
 static void index_free(wp_index* index) {
   wp_error* e = wp_index_free(index);
   //printf("# index free at %p with error %p\n", index, e);
