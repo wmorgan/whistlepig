@@ -352,6 +352,22 @@ static VALUE query_to_s(VALUE self) {
 }
 
 /*
+ * Returns a deep copy of the query, with any in-progress search state
+ * discarded. Useful for rerunning a query without interrupting any pagination
+ * state.
+ *
+ */
+static VALUE query_clone(VALUE self) {
+  char buf[1024];
+
+  wp_query* query; Data_Get_Struct(self, wp_query, query);
+  wp_query* clone = wp_query_clone(query);
+
+  VALUE o_query = Data_Wrap_Struct(c_query, NULL, wp_query_free, clone);
+  return o_query;
+}
+
+/*
  * call-seq: and(other)
  *
  * Returns a new Query that is a conjunction of this query and +other+, which
@@ -524,6 +540,7 @@ void Init_whistlepigc() {
   rb_define_method(c_query, "and", query_and, 1);
   rb_define_method(c_query, "or", query_or, 1);
   rb_define_method(c_query, "to_s", query_to_s, 0);
+  rb_define_method(c_query, "clone", query_clone, 0);
   rb_define_attr(c_query, "query", 1, 0);
 
   c_error = rb_define_class_under(m_whistlepig, "Error", rb_eStandardError);
