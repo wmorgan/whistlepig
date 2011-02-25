@@ -23,7 +23,7 @@ CCLINK?= #-lm -pthread
 CCOPT= $(CFLAGS) $(CCLINK) $(ARCH) $(PROF)
 DEBUG?= -rdynamic -ggdb
 
-TESTFILES = test-segment.c test-stringmap.c test-stringpool.c test-termhash.c test-queries.c test-labels.c
+TESTFILES = test-segment.c test-stringmap.c test-stringpool.c test-termhash.c test-search.c test-labels.c
 CSRCFILES = segment.c termhash.c stringmap.c error.c query.c search.c stringpool.c mmap-obj.c query-parser.c index.c entry.c
 HEADERFILES = $(CSRCFILES:.c=.h) defaults.h whistlepig.h khash.h
 LEXFILES = tokenizer.lex query-parser.lex
@@ -103,7 +103,7 @@ termhash.o: termhash.c whistlepig.h defaults.h index.h segment.h \
 test-labels.o: test-labels.c test.h query.h segment.h defaults.h \
  stringmap.h stringpool.h error.h termhash.h search.h mmap-obj.h \
  query-parser.h index.h entry.h khash.h
-test-queries.o: test-queries.c test.h query.h segment.h defaults.h \
+test-search.o: test-search.c test.h query.h segment.h defaults.h \
  stringmap.h stringpool.h error.h termhash.h search.h mmap-obj.h \
  query-parser.h index.h entry.h khash.h
 test-segment.o: test-segment.c test.h segment.h defaults.h stringmap.h \
@@ -177,7 +177,7 @@ test: $(TESTBIN)
 	./test-stringmap
 	./test-stringpool
 	./test-termhash
-	./test-queries
+	./test-search
 	./test-labels
 
 integration-tests/enron1m.index0.pr: integration-tests/enron1m.mbox $(MBOXADDBIN) $(OBJ)

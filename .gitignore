@@ -11,7 +11,7 @@ query-tokenizer.[ch]
 query-parser.lex.[ch]
 tokenizer.lex.[ch]
 test-stringpool
-test-queries
+test-search
 test-segment
 test-stringmap
 test-termhash
