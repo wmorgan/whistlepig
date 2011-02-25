@@ -25,25 +25,22 @@
 %option prefix="query_parser_"
 %option bison-bridge bison-locations
 
-FIRSTWORDCHAR [[:alnum:]]
-INNERWORDCHAR [[:alnum:]'_#@\-\.\/]
-LASTWORDCHAR  [[:alnum:]_#@-]
+/* for the first char, everything is allowed except ()"-~ */
+FIRSTWORDCHAR [[:alnum:]+=!@#$%\^&\*_|'/\?\.\,<>`]
+
+/* inside a word, everything is allowed except ()" */
+INNERWORDCHAR [[:alnum:]+=!@#$%\^&\*_|'/\?\.\,<>`\-~]
 
 %%
 
 OR return OR;
 
-{FIRSTWORDCHAR}{INNERWORDCHAR}*{LASTWORDCHAR} {
+{FIRSTWORDCHAR}{INNERWORDCHAR}* {
   yylval->string = strdup(yytext);
   return WORD;
 }
 
-{FIRSTWORDCHAR}{LASTWORDCHAR}? {
-  yylval->string = strdup(yytext);
-  return WORD;
-}
-
-[\n[:blank:]] { } ; // nothing
+[\n[:blank:]] ; // nothing
 
 . return yytext[0];
 
