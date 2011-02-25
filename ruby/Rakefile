@@ -3,7 +3,7 @@ require 'rake/gempackagetask.rb'
 
 spec = Gem::Specification.new do |s|
  s.name = "whistlepig"
- s.version = "0.3"
+ s.version = "0.4"
  s.date = Time.now.to_s
  s.email = "wmorgan-whistlepig-gemspec@masanjin.net"
  s.authors = ["William Morgan"]
