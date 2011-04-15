@@ -15,8 +15,8 @@
 #include "khash.h"
 
 typedef struct posarray {
-  uint16_t size;
-  uint16_t next;
+  uint32_t size;
+  uint32_t next;
   pos_t* data;
 } posarray;
 
