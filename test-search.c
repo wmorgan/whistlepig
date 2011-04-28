@@ -356,3 +356,27 @@ TEST(fielded_queries) {
 
   return NO_ERROR;
 }
+
+TEST(utf8_chars) {
+  wp_index* index;
+  uint64_t results[10];
+  uint32_t num_results;
+  wp_query* query;
+
+  RELAY_ERROR(setup(&index));
+
+  RELAY_ERROR(add_string(index, "hello 我 能 吞下 玻璃 而 不 傷 身體 。")); // pre-tokenized for your pleasure
+
+  RUN_QUERY("我");
+  ASSERT(num_results == 1);
+
+  RUN_QUERY("吞下");
+  ASSERT(num_results == 1);
+
+  RUN_QUERY("\"不 傷 身體\"");
+  ASSERT(num_results == 1);
+
+  RELAY_ERROR(shutdown(index));
+
+  return NO_ERROR;
+}
