@@ -1,0 +1,9 @@
+0. make test
+1. export RELEASE=<release>
+2. bump version number in ruby/Rakefile, README, and www/index.html
+3. make rubygem
+4. git archive --format=tar --prefix=whistlepig-$RELEASE/ HEAD | gzip > whistlepig-$RELEASE.tar.gz
+5. git tag release-$RELEASE
+6. git push; git push --tags
+7. gem push ruby/pkg/whistlepig-$RELEASE.gem
+8. upload whistlepig-$RELEASE.tar.gz and www/index.html
