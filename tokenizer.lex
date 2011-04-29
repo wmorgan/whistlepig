@@ -15,9 +15,9 @@
 %option outfile="tokenizer.lex.c" header-file="tokenizer.lex.h"
 %option extra-type="struct lexinfo*"
 
-FIRSTWORDCHAR [[:alnum:]]
-INNERWORDCHAR [[:alnum:]'_#@\-\.:\/]
-LASTWORDCHAR  [[:alnum:]_#@-]
+FIRSTWORDCHAR [^[:blank:][:punct:]\r\n]
+INNERWORDCHAR [^[:blank:]]
+LASTWORDCHAR  [^[:blank:][:punct:]\r\n]
 
 %%
 \-?[[:digit:]]+(\.([[:digit:]]+)?)? {
@@ -38,7 +38,7 @@ LASTWORDCHAR  [[:alnum:]_#@-]
   return TOK_WORD;
 }
 
-\n {
+[\r\n] {
   yyextra->start++;
   yyextra->end++;
 }
