@@ -23,7 +23,7 @@ CCLINK?= #-lm -pthread
 CCOPT= $(CFLAGS) $(CCLINK) $(ARCH) $(PROF)
 DEBUG?= -rdynamic -ggdb
 
-TESTFILES = test-segment.c test-stringmap.c test-stringpool.c test-termhash.c test-search.c test-labels.c
+TESTFILES = test-segment.c test-stringmap.c test-stringpool.c test-termhash.c test-search.c test-labels.c test-tokenizer.c
 CSRCFILES = segment.c termhash.c stringmap.c error.c query.c search.c stringpool.c mmap-obj.c query-parser.c index.c entry.c
 HEADERFILES = $(CSRCFILES:.c=.h) defaults.h whistlepig.h khash.h
 LEXFILES = tokenizer.lex query-parser.lex
@@ -77,14 +77,15 @@ mmap-obj.o: mmap-obj.c whistlepig.h defaults.h index.h segment.h \
 query-parser.o: query-parser.c whistlepig.h defaults.h index.h segment.h \
  stringmap.h stringpool.h error.h termhash.h query.h search.h mmap-obj.h \
  entry.h khash.h query-parser.h query-parser.tab.h
-query-parser.lex.o: query-parser.lex.c query-parser.h query.h segment.h \
- defaults.h stringmap.h stringpool.h error.h termhash.h search.h \
- mmap-obj.h query-parser.tab.h
+query-parser.lex.o: query-parser.lex.c whistlepig.h defaults.h index.h \
+ segment.h stringmap.h stringpool.h error.h termhash.h query.h search.h \
+ mmap-obj.h entry.h khash.h query-parser.h query-parser.tab.h
 query-parser.tab.o: query-parser.tab.c query.h segment.h defaults.h \
  stringmap.h stringpool.h error.h termhash.h search.h mmap-obj.h \
  query-parser.h query-parser.tab.h
-query.o: query.c query.h segment.h defaults.h stringmap.h stringpool.h \
- error.h termhash.h search.h mmap-obj.h
+query.o: query.c whistlepig.h defaults.h index.h segment.h stringmap.h \
+ stringpool.h error.h termhash.h query.h search.h mmap-obj.h entry.h \
+ khash.h query-parser.h
 search.o: search.c whistlepig.h defaults.h index.h segment.h stringmap.h \
  stringpool.h error.h termhash.h query.h search.h mmap-obj.h entry.h \
  khash.h query-parser.h
@@ -113,6 +114,9 @@ test-stringmap.o: test-stringmap.c stringmap.h stringpool.h error.h \
  test.h
 test-stringpool.o: test-stringpool.c stringpool.h error.h test.h
 test-termhash.o: test-termhash.c termhash.h error.h test.h
+test-tokenizer.o: test-tokenizer.c test.h tokenizer.lex.h segment.h \
+ defaults.h stringmap.h stringpool.h error.h termhash.h query.h search.h \
+ mmap-obj.h
 tokenizer.lex.o: tokenizer.lex.c segment.h defaults.h stringmap.h \
  stringpool.h error.h termhash.h query.h search.h mmap-obj.h
 
