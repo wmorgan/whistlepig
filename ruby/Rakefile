@@ -1,5 +1,5 @@
 require 'rubygems'
-require 'rake/gempackagetask.rb'
+require 'rubygems/package_task'
 
 spec = Gem::Specification.new do |s|
  s.name = "whistlepig"
@@ -21,7 +21,7 @@ task :rdoc do |t|
   sh "rm -rf doc; rdoc #{spec.rdoc_options.join(' ')} #{spec.extra_rdoc_files.join(' ')} lib/whistlepig.rb"
 end
 
-Rake::GemPackageTask.new spec do
+Gem::PackageTask.new spec do
 end
 
 # vim: syntax=ruby
