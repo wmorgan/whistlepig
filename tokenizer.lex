@@ -15,9 +15,9 @@
 %option outfile="tokenizer.lex.c" header-file="tokenizer.lex.h"
 %option extra-type="struct lexinfo*"
 
-FIRSTWORDCHAR [^[:blank:][:punct:]\r\n]
-INNERWORDCHAR [^[:blank:]]
-LASTWORDCHAR  [^[:blank:][:punct:]\r\n]
+FIRSTWORDCHAR [^[:blank:][:punct:]<>\r\n]
+INNERWORDCHAR [^[:blank:]<>]
+LASTWORDCHAR  [^[:blank:][:punct:]<>\r\n]
 
 %%
 \-?[[:digit:]]+(\.([[:digit:]]+)?)? {
