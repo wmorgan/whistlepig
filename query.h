@@ -21,6 +21,7 @@
 #define WP_QUERY_NEG 5
 #define WP_QUERY_LABEL 6
 #define WP_QUERY_EMPTY 7
+#define WP_QUERY_EVERY 8
 
 // a node in the query tree
 typedef struct wp_query {
@@ -59,6 +60,9 @@ wp_query* wp_query_new_negation();
 
 // public: make an empty query node.
 wp_query* wp_query_new_empty();
+
+// public: make an every-document query node.
+wp_query* wp_query_new_every();
 
 // public: deep clone of a query, but dropping all search state.
 wp_query* wp_query_clone(wp_query* other);

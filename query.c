@@ -53,35 +53,19 @@ wp_query* wp_query_new_label(const char* label) {
   return ret;
 }
 
-wp_query* wp_query_new_conjunction() {
-  wp_query* ret = wp_query_new();
-  ret->type = WP_QUERY_CONJ;
-  return ret;
-}
+#define SIMPLE_QUERY_CONSTRUCTOR(name, type_name) \
+  wp_query* wp_query_new_##name() { \
+    wp_query* ret = wp_query_new(); \
+    ret->type = type_name; \
+    return ret; \
+  }
 
-wp_query* wp_query_new_disjunction() {
-  wp_query* ret = wp_query_new();
-  ret->type = WP_QUERY_DISJ;
-  return ret;
-}
-
-wp_query* wp_query_new_phrase() {
-  wp_query* ret = wp_query_new();
-  ret->type = WP_QUERY_PHRASE;
-  return ret;
-}
-
-wp_query* wp_query_new_negation() {
-  wp_query* ret = wp_query_new();
-  ret->type = WP_QUERY_NEG;
-  return ret;
-}
-
-wp_query* wp_query_new_empty() {
-  wp_query* ret = wp_query_new();
-  ret->type = WP_QUERY_EMPTY;
-  return ret;
-}
+SIMPLE_QUERY_CONSTRUCTOR(conjunction, WP_QUERY_CONJ);
+SIMPLE_QUERY_CONSTRUCTOR(disjunction, WP_QUERY_DISJ);
+SIMPLE_QUERY_CONSTRUCTOR(phrase, WP_QUERY_PHRASE);
+SIMPLE_QUERY_CONSTRUCTOR(negation, WP_QUERY_NEG);
+SIMPLE_QUERY_CONSTRUCTOR(empty, WP_QUERY_EMPTY);
+SIMPLE_QUERY_CONSTRUCTOR(every, WP_QUERY_EVERY);
 
 wp_query* wp_query_add(wp_query* a, wp_query* b) {
   if(a->type == WP_QUERY_EMPTY) {
