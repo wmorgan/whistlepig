@@ -74,8 +74,8 @@ RAISING_STATIC(search_result_combine_into(search_result* result, search_result* 
  * call to next() will give you the next result (or set done = true).
  *
  * advance() is given a docid and advances the stream to just *after* that
- * document, and tells you whether it saw the docid on the way(and set a result
- * if so for your convenience).
+ * document, and tells you whether it saw the docid on the way (and sets the
+ * result if so for your convenience).
  *
  * a next() followed by one or more advance() calls with the returned docid
  * will set found = true and will not advance the stream beyond where it
@@ -96,21 +96,25 @@ static wp_error* conj_init_search_state(wp_query* q, wp_segment* s) RAISES_ERROR
 static wp_error* disj_init_search_state(wp_query* q, wp_segment* s) RAISES_ERROR;
 static wp_error* phrase_init_search_state(wp_query* q, wp_segment* s) RAISES_ERROR;
 static wp_error* neg_init_search_state(wp_query* q, wp_segment* s) RAISES_ERROR;
+static wp_error* every_init_search_state(wp_query* q, wp_segment* s) RAISES_ERROR;
 static wp_error* term_release_search_state(wp_query* q) RAISES_ERROR;
 static wp_error* conj_release_search_state(wp_query* q) RAISES_ERROR;
 static wp_error* disj_release_search_state(wp_query* q) RAISES_ERROR;
 static wp_error* phrase_release_search_state(wp_query* q) RAISES_ERROR;
 static wp_error* neg_release_search_state(wp_query* q) RAISES_ERROR;
+static wp_error* every_release_search_state(wp_query* q) RAISES_ERROR;
 static wp_error* term_next_doc(wp_query* q, wp_segment* s, search_result* result, int* done) RAISES_ERROR;
 static wp_error* conj_next_doc(wp_query* q, wp_segment* s, search_result* result, int* done) RAISES_ERROR;
 static wp_error* disj_next_doc(wp_query* q, wp_segment* s, search_result* result, int* done) RAISES_ERROR;
 static wp_error* phrase_next_doc(wp_query* q, wp_segment* s, search_result* result, int* done) RAISES_ERROR;
 static wp_error* neg_next_doc(wp_query* q, wp_segment* s, search_result* result, int* done) RAISES_ERROR;
+static wp_error* every_next_doc(wp_query* q, wp_segment* s, search_result* result, int* done) RAISES_ERROR;
 static wp_error* term_advance_to_doc(wp_query* q, wp_segment* s, docid_t doc_id, search_result* result, int* found, int* done) RAISES_ERROR;
 static wp_error* conj_advance_to_doc(wp_query* q, wp_segment* s, docid_t doc_id, search_result* result, int* found, int* done) RAISES_ERROR;
 static wp_error* disj_advance_to_doc(wp_query* q, wp_segment* s, docid_t doc_id, search_result* result, int* found, int* done) RAISES_ERROR;
 static wp_error* phrase_advance_to_doc(wp_query* q, wp_segment* s, docid_t doc_id, search_result* result, int* found, int* done) RAISES_ERROR;
 static wp_error* neg_advance_to_doc(wp_query* q, wp_segment* s, docid_t doc_id, search_result* result, int* found, int* done) RAISES_ERROR;
+static wp_error* every_advance_to_doc(wp_query* q, wp_segment* s, docid_t doc_id, search_result* result, int* found, int* done) RAISES_ERROR;
 
 // the term_* functions also handle labels
 // we use conj for empty queries as well (why not)
@@ -123,6 +127,7 @@ static wp_error* neg_advance_to_doc(wp_query* q, wp_segment* s, docid_t doc_id, 
     case WP_QUERY_DISJ: RELAY_ERROR(disj_##suffix(__VA_ARGS__)); break; \
     case WP_QUERY_PHRASE: RELAY_ERROR(phrase_##suffix(__VA_ARGS__)); break; \
     case WP_QUERY_NEG: RELAY_ERROR(neg_##suffix(__VA_ARGS__)); break; \
+    case WP_QUERY_EVERY: RELAY_ERROR(every_##suffix(__VA_ARGS__)); break; \
     default: RAISE_ERROR("unknown query node type %d", type); \
   } \
 
@@ -282,6 +287,20 @@ static wp_error* neg_init_search_state(wp_query* q, wp_segment* seg) {
 
 static wp_error* neg_release_search_state(wp_query* q) {
   RELAY_ERROR(wp_search_release_search_state(q->children));
+  free(q->search_data);
+  return NO_ERROR;
+}
+
+static wp_error* every_init_search_state(wp_query* q, wp_segment* seg) {
+  q->search_data = malloc(sizeof(docid_t));
+
+  postings_region* pr = MMAP_OBJ(seg->postings, postings_region);
+  *(docid_t*)q->search_data = pr->num_docs;
+
+  return NO_ERROR;
+}
+
+static wp_error* every_release_search_state(wp_query* q) {
   free(q->search_data);
   return NO_ERROR;
 }
@@ -719,6 +738,46 @@ static wp_error* neg_advance_to_doc(wp_query* q, wp_segment* seg, docid_t doc_id
   *done = state->cur == DOCID_NONE ? 1 : 0;
 
   DEBUG("finally, state is cur %u and next %u and found is %d and done is %d", state->cur, state->next, *found, *done);
+  return NO_ERROR;
+}
+
+static wp_error* every_next_doc(wp_query* q, wp_segment* seg, search_result* result, int* done) {
+  (void)seg; // don't actually need to look in here!
+  docid_t* state_doc_id = (docid_t*)q->search_data;
+
+  DEBUG("called with cur %u", *state_doc_id);
+
+  if(*state_doc_id == DOCID_NONE) {
+    *done = 1;
+  }
+  else {
+    result->doc_id = *state_doc_id;
+    result->num_doc_matches = 0;
+    result->doc_matches = NULL;
+    (*state_doc_id)--;
+    *done = 0;
+  }
+  return NO_ERROR;
+}
+
+static wp_error* every_advance_to_doc(wp_query* q, wp_segment* seg, docid_t doc_id, search_result* result, int* found, int* done) {
+  (void)seg; // don't actually need to look in here!
+  docid_t* state_doc_id = q->search_data;
+
+  DEBUG("called with cur %u", *state_doc_id);
+
+  if(*state_doc_id == DOCID_NONE) {
+    *found = 0;
+  }
+  else {
+    *state_doc_id = doc_id - 1; // just after that doc
+    *found = 1; // we find everyhing
+    result->doc_id = doc_id;
+    result->num_doc_matches = 0;
+    result->doc_matches = NULL;
+  }
+
+  *done = (*state_doc_id == DOCID_NONE ? 1 : 0);
   return NO_ERROR;
 }
 

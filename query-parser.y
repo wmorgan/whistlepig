@@ -73,6 +73,7 @@ atom: WORD            { $$ = wp_query_new_term(strdup(context->default_field), $
     | WORD ':' phrase { $$ = wp_query_set_all_child_fields($3, $1); }
     | '-' atom        { $$ = wp_query_new_negation(); $$ = wp_query_add($$, $2); }
     | '~' WORD        { $$ = wp_query_new_label($2); }
+    | '*'             { $$ = wp_query_new_every(); }
 ;
 
 phrase: '"' words '"'   { $$ = $2; }

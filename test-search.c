@@ -380,3 +380,36 @@ TEST(utf8_chars) {
 
   return NO_ERROR;
 }
+
+TEST(every_selector) {
+  wp_index* index;
+  uint64_t results[10];
+  uint32_t num_results;
+  wp_query* query;
+
+  RELAY_ERROR(setup(&index));
+
+  RUN_QUERY("*");
+  ASSERT(num_results == 3);
+  ASSERT(results[0] == 3);
+  ASSERT(results[1] == 2);
+  ASSERT(results[2] == 1);
+
+  RUN_QUERY("-*");
+  ASSERT(num_results == 0);
+
+  RUN_QUERY("* OR four");
+  ASSERT(num_results == 3);
+  ASSERT(results[0] == 3);
+  ASSERT(results[1] == 2);
+  ASSERT(results[2] == 1);
+
+  RUN_QUERY("* OR asdfasefs");
+  ASSERT(num_results == 3);
+  ASSERT(results[0] == 3);
+  ASSERT(results[1] == 2);
+  ASSERT(results[2] == 1);
+
+  RELAY_ERROR(shutdown(index));
+  return NO_ERROR;
+}

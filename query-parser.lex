@@ -25,8 +25,8 @@
 %option prefix="query_parser_"
 %option bison-bridge bison-locations
 
-/* for the first char, everything is allowed except ()"-~: */
-FIRSTWORDCHAR [^\n[:blank:]()"~:-]
+/* for the first char, everything is allowed except ()"-~:* */
+FIRSTWORDCHAR [^\n[:blank:]()"~:\*-]
 
 /* inside a word, everything is allowed except ()": */
 INNERWORDCHAR [^\n[:blank:]()":]
