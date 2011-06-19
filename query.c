@@ -113,22 +113,30 @@ static int subquery_to_s(wp_query* q, size_t n, char* buf) {
 #define min(a, b) (a < b ? a : b)
 
 size_t wp_query_to_s(wp_query* q, size_t n, char* buf) {
-  size_t ret;
+  size_t ret, term_n;
   char* orig_buf = buf;
 
-  if(q->type == WP_QUERY_EMPTY) {
-    buf[0] = '\0';
-    ret = n;
-  }
-  else if(q->type == WP_QUERY_TERM) {
-    size_t term_n = (size_t)snprintf(buf, n, "%s:\"%s\"", q->field, q->word);
+  /* nodes without children */
+  switch(q->type) {
+  case WP_QUERY_TERM:
+    term_n = (size_t)snprintf(buf, n, "%s:\"%s\"", q->field, q->word);
     ret = min(term_n, n);
-  }
-  else if(q->type == WP_QUERY_LABEL) {
-    size_t term_n = (size_t)snprintf(buf, n, "~%s", q->word);
+    break;
+  case WP_QUERY_LABEL:
+    term_n = (size_t)snprintf(buf, n, "~%s", q->word);
     ret = min(term_n, n);
-  }
-  else {
+    break;
+  case WP_QUERY_EMPTY:
+    term_n = (size_t)snprintf(buf, n, "<EMPTY>");
+    ret = min(term_n, n);
+    break;
+  case WP_QUERY_EVERY:
+    term_n = (size_t)snprintf(buf, n, "<EVERY>");
+    ret = min(term_n, n);
+    break;
+
+  /* nodes with children */
+  default:
     switch(q->type) {
     case WP_QUERY_CONJ:
       if(n >= 4) { // "(AND"
