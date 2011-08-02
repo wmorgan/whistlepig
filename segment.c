@@ -485,17 +485,29 @@ wp_error* wp_segment_add_label(wp_segment* s, const char* label, docid_t doc_id)
   // posting
   uint32_t prev_offset = OFFSET_NONE;
   uint32_t next_offset = termhash_get_val(th, t);
+  docid_t last_docid = DOCID_NONE;
+
   if(next_offset == (uint32_t)-1) next_offset = OFFSET_NONE;
+  DEBUG("start offset is %u (none is %u)", next_offset, OFFSET_NONE);
 
   while(next_offset != OFFSET_NONE) {
-    label_posting* po = wp_segment_label_posting_at(pr, next_offset);
-    if(po->doc_id == doc_id) {
+    label_posting* lp = wp_segment_label_posting_at(pr, next_offset);
+
+    if((last_docid != DOCID_NONE) && (lp->doc_id >= last_docid)) {
+      RAISE_ERROR("whistlepig index corruption! lp %u has docid %u but last docid at lp %u was %u", next_offset, lp->doc_id, prev_offset, last_docid);
+    }
+    else {
+      last_docid = lp->doc_id;
+    }
+
+    DEBUG("got doc id %u next_offset %u at offset %u (looking for doc id %u)", lp->doc_id, lp->next_offset, next_offset, doc_id);
+    if(lp->doc_id == doc_id) {
       DEBUG("already have label '%s' for doc %u; returning", label, doc_id);
       return NO_ERROR;
     }
-    else if(po->doc_id < doc_id) break;
+    else if(lp->doc_id < doc_id) break;
     prev_offset = next_offset;
-    next_offset = po->next_offset;
+    next_offset = lp->next_offset;
   }
 
   // find a space for the posting by first checking for a free postings in the
@@ -550,11 +562,21 @@ wp_error* wp_segment_remove_label(wp_segment* s, const char* label, docid_t doc_
   // find the posting and the previous posting in the list, if any
   uint32_t prev_offset = OFFSET_NONE;
   uint32_t offset = termhash_get_val(th, t);
+  docid_t last_docid = DOCID_NONE;
+
   if(offset == (uint32_t)-1) offset = OFFSET_NONE;
   label_posting* lp = NULL;
 
   while(offset != OFFSET_NONE) {
     lp = wp_segment_label_posting_at(pr, offset);
+
+    if((last_docid != DOCID_NONE) && (lp->doc_id >= last_docid)) {
+      RAISE_ERROR("whistlepig index corruption! lp %u has docid %u but last docid at lp %u was %u", offset, lp->doc_id, prev_offset, last_docid);
+    }
+    else {
+      last_docid = lp->doc_id;
+    }
+
     if(lp->doc_id < doc_id) offset = OFFSET_NONE; // nasty hack to induce failure
     if(lp->doc_id <= doc_id) break;
     prev_offset = offset;
