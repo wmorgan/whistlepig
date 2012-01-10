@@ -793,6 +793,7 @@ wp_error* wp_search_run_query_on_segment(struct wp_query* q, struct wp_segment* 
 #endif
 
   while(*num_results < max_num_results) {
+    DEBUG("got %d results so far (max is %d)", *num_results, max_num_results);
     RELAY_ERROR(query_next_doc(q, s, &results[*num_results], &done));
     if(done) break;
     DEBUG("got result %u (%u doc matches)", results[*num_results].doc_id, results[*num_results].num_doc_matches);

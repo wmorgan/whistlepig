@@ -396,6 +396,9 @@ wp_error* wp_segment_read_posting(wp_segment* s, uint32_t offset, posting* po, i
 wp_error* wp_segment_add_posting(wp_segment* s, const char* field, const char* word, docid_t doc_id, uint32_t num_positions, pos_t positions[]) {
   // TODO move this logic up to ensure_fit()
   int success;
+
+  if(doc_id == 0) RAISE_ERROR("can't add a label to doc 0");
+
   RELAY_ERROR(bump_stringmap(s, &success));
   RELAY_ERROR(bump_stringpool(s, &success));
   RELAY_ERROR(bump_termhash(s, &success));
@@ -465,11 +468,14 @@ wp_error* wp_segment_read_label(wp_segment* s, uint32_t offset, posting* po) {
 wp_error* wp_segment_add_label(wp_segment* s, const char* label, docid_t doc_id) {
   // TODO move this logic up to ensure_fit()
   int success;
+
+  if(doc_id == 0) RAISE_ERROR("can't add a label to doc 0");
+
   RELAY_ERROR(bump_stringmap(s, &success));
   RELAY_ERROR(bump_stringpool(s, &success));
   RELAY_ERROR(bump_termhash(s, &success));
 
-  DEBUG("adding label %s to doc %u", label, doc_id);
+  DEBUG("adding label '%s' to doc %u", label, doc_id);
 
   postings_region* pr = MMAP_OBJ(s->labels, postings_region);
   stringmap* sh = MMAP_OBJ(s->stringmap, stringmap);
@@ -511,8 +517,8 @@ wp_error* wp_segment_add_label(wp_segment* s, const char* label, docid_t doc_id)
   }
 
   // find a space for the posting by first checking for a free postings in the
-  // dead list.  the dead list is the list stored under the sentinel term
-  // with field 0 and word 0.
+  // dead list. the dead list is the list stored under the sentinel term with
+  // field 0 and word 0.
   term dead_term = { .field_s = 0, .word_s = 0 };
   uint32_t entry_offset;
   uint32_t dead_offset = termhash_get_val(th, dead_term);
