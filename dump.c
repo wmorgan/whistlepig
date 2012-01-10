@@ -7,14 +7,39 @@
 
 RAISING_STATIC(dump_posting_list(wp_segment* s, uint32_t offset)) {
   posting po;
+  docid_t last_doc_id = 0;
+  int started = 0;
 
   while(offset != OFFSET_NONE) {
     RELAY_ERROR(wp_segment_read_posting(s, offset, &po, 1));
 
     printf("  @%u doc %u:", offset, po.doc_id);
-    for(uint32_t i = 0; i < po.num_positions; i++) {
-      printf(" %d", po.positions[i]);
-    }
+    for(uint32_t i = 0; i < po.num_positions; i++) printf(" %d", po.positions[i]);
+
+    if((po.doc_id == 0) || (started && (po.doc_id >= last_doc_id))) printf(" <-- BROKEN");
+    started = 1;
+    last_doc_id = po.doc_id;
+    printf("\n");
+
+    offset = po.next_offset;
+    free(po.positions);
+  }
+
+  return NO_ERROR;
+}
+
+RAISING_STATIC(dump_label_posting_list(wp_segment* s, uint32_t offset)) {
+  posting po;
+  docid_t last_doc_id = 0;
+  int started = 0;
+
+  while(offset != OFFSET_NONE) {
+    RELAY_ERROR(wp_segment_read_label(s, offset, &po));
+
+    printf("  @%u doc %u", offset, po.doc_id);
+    if((po.doc_id == 0) || (started && (po.doc_id >= last_doc_id))) printf(" <-- BROKEN");
+    started = 1;
+    last_doc_id = po.doc_id;
     printf("\n");
 
     offset = po.next_offset;
@@ -33,10 +58,23 @@ RAISING_STATIC(dump(wp_segment* segment)) {
     else if(isdel(th->flags, i)) printf("%u: [deleted]", i);
     else {
       term t = th->keys[i];
-      const char* field = stringmap_int_to_string(sh, t.field_s);
-      const char* word = stringmap_int_to_string(sh, t.word_s);
-      printf("%u: %s:'%s'\n", i, field, word);
-      RELAY_ERROR(dump_posting_list(segment, th->vals[i]));
+
+      if(t.field_s == 0) { // sentinel label value
+        if(t.word_s == 0) { // sentinel dead list value
+          printf("%u: (dead list)\n", i);
+        }
+        else {
+          const char* label = stringmap_int_to_string(sh, t.word_s);
+          printf("%u: ~%s\n", i, label);
+        }
+        RELAY_ERROR(dump_label_posting_list(segment, th->vals[i]));
+      }
+      else {
+        const char* field = stringmap_int_to_string(sh, t.field_s);
+        const char* word = stringmap_int_to_string(sh, t.word_s);
+        printf("%u: %s:'%s'\n", i, field, word);
+        RELAY_ERROR(dump_posting_list(segment, th->vals[i]));
+      }
     }
   }
 
