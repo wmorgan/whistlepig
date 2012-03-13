@@ -34,14 +34,6 @@ wp_error* shutdown(wp_index* index) {
   return NO_ERROR;
 }
 
-TEST(empty_queries) {
-  wp_query* q;
-  RELAY_ERROR(wp_query_parse("", "body", &q));
-  ASSERT(q != NULL);
-
-  return NO_ERROR;
-}
-
 #define RUN_QUERY(q) \
   RELAY_ERROR(wp_query_parse(q, "body", &query)); \
   RELAY_ERROR(wp_index_setup_query(index, query)); \
