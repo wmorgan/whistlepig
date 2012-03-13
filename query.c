@@ -12,7 +12,17 @@ static wp_query* wp_query_new() {
   return ret;
 }
 
+static const char* identity(const char* field, const char* word) {
+  (void)field;
+  if(word) return strdup(word);
+  else return NULL;
+}
+
 wp_query* wp_query_clone(wp_query* other) {
+  return wp_query_substitute(other, identity);
+}
+
+wp_query* wp_query_substitute(wp_query* other, const char *(*substituter)(const char* field, const char* word)) {
   wp_query* ret = malloc(sizeof(wp_query));
   ret->type = other->type;
   ret->num_children = other->num_children;
@@ -21,12 +31,12 @@ wp_query* wp_query_clone(wp_query* other) {
   if(other->field) ret->field = strdup(other->field);
   else ret->field = NULL;
 
-  if(other->word) ret->word = strdup(other->word);
+  if(other->field && other->word) ret->word = substituter(other->field, other->word);
   else ret->word = NULL;
 
   ret->children = ret->next = ret->last = NULL; // set below
   for(wp_query* child = other->children; child != NULL; child = child->next) {
-    wp_query* clone = wp_query_clone(child);
+    wp_query* clone = wp_query_substitute(child, substituter);
     if(ret->last == NULL) ret->children = ret->last = clone;
     else {
       ret->last->next = clone;

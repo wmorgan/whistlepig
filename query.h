@@ -64,8 +64,11 @@ wp_query* wp_query_new_empty();
 // public: make an every-document query node.
 wp_query* wp_query_new_every();
 
-// public: deep clone of a query, but dropping all search state.
+// public: deep clone of a query, dropping all search state.
 wp_query* wp_query_clone(wp_query* other);
+
+// public: build a new query by substituting words from the old query, dropping all search state
+wp_query* wp_query_substitute(wp_query* other, const char *(*substituter)(const char* field, const char* word));
 
 // public: add a query node as a child of another
 wp_query* wp_query_add(wp_query* a, wp_query* b);
