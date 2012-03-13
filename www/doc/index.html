@@ -26,19 +26,53 @@
 		
 <p>
 <a href="Whistlepig.html">Whistlepig</a> is a minimalist realtime full-text
-search index. Its goal is to be as small and minimally-featured as
-possible, while still remaining useful, performant and scalable to large
-corpora. If you want realtime full-text search without the frills, <a
+search index. Its goal is to be as small and feature-free as possible,
+while still remaining useful, performant and scalable to large corpora. If
+you want realtime full-text search without the frills, <a
 href="Whistlepig.html">Whistlepig</a> may be for you.
 </p>
 <p>
-<a href="Whistlepig.html">Whistlepig</a> takes the principles of realtime
-search to an extreme. In particular:
+<a href="Whistlepig.html">Whistlepig</a> is written in ANSI C99. It
+currently provides a C API and Ruby bindings.
+</p>
+<p>
+Latest version: 0.8, released 2012-03-13.
+</p>
+<pre>
+        Status: beta
+          News: http://all-thing.net/label/whistlepig/
+      Homepage: http://masanjin.net/whistlepig/
+   Bug reports: http://github.com/wmorgan/whistlepig/issues
+</pre>
+<h1>Getting it</h1>
+<pre>
+       Tarball:  http://masanjin.net/whistlepig/whistlepig-0.7.tar.gz
+       Rubygem:  gem install whistlepig
+           Git:  git clone git://github.com/wmorgan/whistlepig.git
+</pre>
+<h1>Realtime search</h1>
+<p>
+Roughly speaking, realtime search means:
 </p>
 <ul>
 <li><p>
-It only returns documents in the reverse order to which they were added
-(i.e. LIFO order), and performs no ranking, reordering, or scoring.
+documents are available to to queries immediately after indexing, without
+any reindexing or index merging;
+</p>
+</li>
+<li><p>
+later documents are more important than earlier documents.
+</p>
+</li>
+</ul>
+<p>
+<a href="Whistlepig.html">Whistlepig</a> takes these principles to an
+extreme.
+</p>
+<ul>
+<li><p>
+It only returns documents in the reverse (LIFO) order to which they were
+added, and performs no ranking, reordering, or scoring.
 </p>
 </li>
 <li><p>
@@ -52,7 +86,7 @@ special case of labels; see below).
 </p>
 </li>
 <li><p>
-In only supports in-memory indexes.
+It only supports in-memory indexes.
 </p>
 </li>
 </ul>
@@ -66,30 +100,25 @@ readers.
 </p>
 </li>
 <li><p>
-Fielded terms with arbitrary numbers of fields.
+Fielded terms with arbitrary fields.
 </p>
 </li>
 <li><p>
 A full query language and parser with conjunctions, disjunctions, phrases,
-negations, and grouping.
+negations, grouping, and nesting.
 </p>
 </li>
 <li><p>
 Labels: arbitrary tokens which can be added to and removed from documents
-at any point, and incorporated into search queries. (This is the only
-mutable aspect of a document once it has been indexed.)
+at any point, and incorporated into search queries.
 </p>
 </li>
 <li><p>
-Early query termination.
+Early query termination and resumable queries.
 </p>
 </li>
 <li><p>
-Resumable queries.
-</p>
-</li>
-<li><p>
-A tiny, < 3 KLOC ANSI C implementation.
+A tiny, < 3 KLOC ANSI C99 implementation.
 </p>
 </li>
 </ul>
@@ -103,30 +132,43 @@ A tiny, < 3 KLOC ANSI C implementation.
   index = Index.new &quot;index&quot;
 
   entry1 = Entry.new
-  entry1.add_string(&quot;body&quot;, &quot;hello there bob&quot;)
-  docid1 = index.add_entry entry1 # =&gt; 1
+  entry1.add_string &quot;body&quot;, &quot;hello there bob&quot;
+  docid1 = index.add_entry entry1              # =&gt; 1
 
   entry2 = Entry.new
-  entry2.add_string(&quot;body&quot;, &quot;goodbye bob&quot;)
-  docid2 = index.add_entry entry2 # =&gt; 2
+  entry2.add_string &quot;body&quot;, &quot;goodbye bob&quot;
+  docid2 = index.add_entry entry2              # =&gt; 2
 
   q1 = Query.new &quot;body&quot;, &quot;bob&quot;
-  p index.search(q1) # =&gt; [2, 1]
+  results1 = index.search q1                   # =&gt; [2, 1]
 
-  q2 = q1.and(Query.new(&quot;body&quot;, &quot;hello&quot;))
-  p index.search(q2) # =&gt; [2]
+  q2 = q1.and Query.new(&quot;body&quot;, &quot;hello&quot;)
+  results2 = index.search q2                   # =&gt; [1]
+
+  index.add_label docid2, &quot;funny&quot;
+
+  q3 = Query.new &quot;body&quot;, &quot;bob ~funny&quot;
+  results3 = index.search q3                   # =&gt; [2]
+
+  entry3 = Entry.new
+  entry3.add_string &quot;body&quot;, &quot;hello joe&quot;
+  entry3.add_string &quot;subject&quot;, &quot;what do you know?&quot;
+  docid3 = index.add_entry entry3              # =&gt; 3
+
+  q4 = Query.new &quot;body&quot;, &quot;subject:know hello&quot;
+  results4 = index.search q4                   # =&gt; [3]
 </pre>
 <h2>A note on concurrency:</h2>
 <p>
 <a href="Whistlepig.html">Whistlepig</a> is currently single-process and
 single-thread only. However, it is built with multi-process access in mind.
 Per-segment single-writer, multi-reader support is planned in the near
-future. Multi-writer support can be accomplished via index striping and is
-planned for the distant future.
+future. Multi-writer support can be accomplished via index striping and may
+be attempted in the distant future.
 </p>
 <p>
 Please send bug reports and comments to:
-wmorgan-whistlepig-design@masanjin.net.
+wmorgan-whistlepig-readme@masanjin.net.
 </p>
 
 	</div>
@@ -172,9 +214,9 @@ wmorgan-whistlepig-design@masanjin.net.
 		
 			<li><a href="Whistlepig/Index.html#method-c-new">::new &mdash; Whistlepig::Index</a></li>
 		
-			<li><a href="Whistlepig/Query.html#method-c-new">::new &mdash; Whistlepig::Query</a></li>
-		
 			<li><a href="Whistlepig/Entry.html#method-c-new">::new &mdash; Whistlepig::Entry</a></li>
+		
+			<li><a href="Whistlepig/Query.html#method-c-new">::new &mdash; Whistlepig::Query</a></li>
 		
 			<li><a href="Whistlepig/Index.html#method-i-add_entry">#add_entry &mdash; Whistlepig::Index</a></li>
 		
@@ -185,6 +227,8 @@ wmorgan-whistlepig-design@masanjin.net.
 			<li><a href="Whistlepig/Entry.html#method-i-add_token">#add_token &mdash; Whistlepig::Entry</a></li>
 		
 			<li><a href="Whistlepig/Query.html#method-i-and">#and &mdash; Whistlepig::Query</a></li>
+		
+			<li><a href="Whistlepig/Query.html#method-i-clone">#clone &mdash; Whistlepig::Query</a></li>
 		
 			<li><a href="Whistlepig/Index.html#method-i-close">#close &mdash; Whistlepig::Index</a></li>
 		
@@ -202,11 +246,13 @@ wmorgan-whistlepig-design@masanjin.net.
 		
 			<li><a href="Whistlepig/Index.html#method-i-setup_query">#setup_query &mdash; Whistlepig::Index</a></li>
 		
-			<li><a href="Whistlepig/Entry.html#method-i-size">#size &mdash; Whistlepig::Entry</a></li>
-		
 			<li><a href="Whistlepig/Index.html#method-i-size">#size &mdash; Whistlepig::Index</a></li>
 		
+			<li><a href="Whistlepig/Entry.html#method-i-size">#size &mdash; Whistlepig::Entry</a></li>
+		
 			<li><a href="Whistlepig/Index.html#method-i-teardown_query">#teardown_query &mdash; Whistlepig::Index</a></li>
+		
+			<li><a href="Whistlepig/Query.html#method-i-term_map">#term_map &mdash; Whistlepig::Query</a></li>
 		
 			<li><a href="Whistlepig/Query.html#method-i-to_s">#to_s &mdash; Whistlepig::Query</a></li>
 		

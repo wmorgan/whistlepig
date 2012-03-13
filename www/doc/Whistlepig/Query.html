@@ -38,8 +38,8 @@
 				<div class="section-body">
 					<ul>
 					
-						<li><a href="../ext/whistlepig/whistlepigc_c.html?TB_iframe=true&amp;height=550&amp;width=785"
-							class="thickbox" title="ext/whistlepig/whistlepigc.c">ext/whistlepig/whistlepigc.c</a></li>
+						<li><a href="../ext/whistlepig/whistlepig_c.html?TB_iframe=true&amp;height=550&amp;width=785"
+							class="thickbox" title="ext/whistlepig/whistlepig.c">ext/whistlepig/whistlepig.c</a></li>
 					
 						<li><a href="../lib/whistlepig_rb.html?TB_iframe=true&amp;height=550&amp;width=785"
 							class="thickbox" title="lib/whistlepig.rb">lib/whistlepig.rb</a></li>
@@ -76,7 +76,11 @@
 					
 					<li><a href="#method-i-and">#and</a></li>
 					
+					<li><a href="#method-i-clone">#clone</a></li>
+					
 					<li><a href="#method-i-or">#or</a></li>
+					
+					<li><a href="#method-i-term_map">#term_map</a></li>
 					
 					<li><a href="#method-i-to_s">#to_s</a></li>
 					
@@ -323,6 +327,41 @@ static VALUE query_and(VALUE self, VALUE v_other) </pre>
 			</div>
 
 		
+			<div id="clone-method" class="method-detail ">
+				<a name="method-i-clone"></a>
+
+				<div class="method-heading">
+				
+					<span class="method-name">clone</span><span
+						class="method-args">()</span>
+					<span class="method-click-advice">click to toggle source</span>
+				
+				</div>
+
+				<div class="method-description">
+					
+					<p>
+Returns a deep copy of the query, with any in-progress search state
+discarded. Useful for rerunning a query without interrupting any pagination
+state.
+</p>
+					
+
+					
+					<div class="method-source-code"
+						id="clone-source">
+<pre>
+static VALUE query_clone(VALUE self) </pre>
+					</div>
+					
+				</div>
+
+				
+
+				
+			</div>
+
+		
 			<div id="or-method" class="method-detail ">
 				<a name="method-i-or"></a>
 
@@ -347,6 +386,41 @@ href="Query.html">Query</a> object.
 						id="or-source">
 <pre>
 static VALUE query_or(VALUE self, VALUE v_other) </pre>
+					</div>
+					
+				</div>
+
+				
+
+				
+			</div>
+
+		
+			<div id="term-map-method" class="method-detail ">
+				<a name="method-i-term_map"></a>
+
+				<div class="method-heading">
+				
+					<span class="method-name">term_map</span><span
+						class="method-args">()</span>
+					<span class="method-click-advice">click to toggle source</span>
+				
+				</div>
+
+				<div class="method-description">
+					
+					<p>
+Returns a new query that&#8217;s the result of applying the block to each
+word in the query. Useful for transforming queries programmatically after
+they&#8217;ve been parsed.
+</p>
+					
+
+					
+					<div class="method-source-code"
+						id="term-map-source">
+<pre>
+static VALUE query_map_terms(VALUE self) </pre>
 					</div>
 					
 				</div>
