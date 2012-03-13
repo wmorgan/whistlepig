@@ -16,6 +16,8 @@ test-segment
 test-stringmap
 test-termhash
 test-labels
+test-queries
+test-tokenizer
 batch-run-queries
 ruby/ext/whistlepig/*.[ch]
 ruby/ext/whistlepig/Makefile
