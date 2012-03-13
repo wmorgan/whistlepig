@@ -12,7 +12,7 @@ spec = Gem::Specification.new do |s|
  s.files = %w(README ext/whistlepig/extconf.rb lib/whistlepig.rb) + Dir["ext/whistlepig/*.[ch]"]
  s.extensions = %w(ext/whistlepig/extconf.rb)
  s.executables = []
- s.extra_rdoc_files = %w(README ext/whistlepig/whistlepigc.c)
+ s.extra_rdoc_files = %w(README ext/whistlepig/whistlepig.c)
  s.rdoc_options = %w(-c utf8 --main README --title Whistlepig)
  s.description = "Whistlepig is a minimalist realtime full-text search index. Its goal is to be as small and minimally-featured as possible, while still remaining useful, performant and scalable to large corpora. If you want realtime full-text search without the frills, Whistlepig may be for you."
 end

@@ -1,4 +1,4 @@
-require "whistlepigc"
+require "whistlepig/whistlepig"
 
 module Whistlepig
   ## A full-text index. You can add entries to it, and you can run queries

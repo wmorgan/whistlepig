@@ -526,7 +526,7 @@ static VALUE index_run_query(VALUE self, VALUE v_query, VALUE v_max_num_results)
   return array;
 }
 
-void Init_whistlepigc() {
+void Init_whistlepig() {
   VALUE m_whistlepig;
 
   m_whistlepig = rb_define_module("Whistlepig");
