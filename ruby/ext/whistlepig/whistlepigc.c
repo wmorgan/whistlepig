@@ -367,6 +367,28 @@ static VALUE query_clone(VALUE self) {
   return o_query;
 }
 
+static const char* yielding_substituter(const char* field, const char* term) {
+  VALUE result = rb_yield_values(2, rb_str_new2(field), rb_str_new2(term));
+  if(NIL_P(result)) return strdup(term);
+  else return strdup(RSTRING_PTR(result));
+}
+
+/*
+ * Returns a new query that's the result of applying the block to each
+ * word in the query. Useful for transforming queries programmatically
+ * after they've been parsed.
+ *
+ */
+static VALUE query_map_terms(VALUE self) {
+  char buf[1024];
+
+  wp_query* query; Data_Get_Struct(self, wp_query, query);
+  wp_query* result = wp_query_substitute(query, yielding_substituter);
+
+  VALUE o_query = Data_Wrap_Struct(c_query, NULL, wp_query_free, result);
+  return o_query;
+}
+
 /*
  * call-seq: and(other)
  *
@@ -541,6 +563,7 @@ void Init_whistlepigc() {
   rb_define_method(c_query, "or", query_or, 1);
   rb_define_method(c_query, "to_s", query_to_s, 0);
   rb_define_method(c_query, "clone", query_clone, 0);
+  rb_define_method(c_query, "term_map", query_map_terms, 0);
   rb_define_attr(c_query, "query", 1, 0);
 
   c_error = rb_define_class_under(m_whistlepig, "Error", rb_eStandardError);
