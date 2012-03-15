@@ -68,5 +68,13 @@ TEST(query_substitution) {
   wp_query_to_s(q2, 100, buf);
   ASSERT(!strcmp(buf, "(AND body:\"XiY\" body:\"XeatY\" body:\"XmiceY\")"));
 
+  RELAY_ERROR(wp_query_parse("i eat ~mice", "body", &q));
+  q2 = wp_query_substitute(q, substituter);
+  ASSERT(q2);
+  ASSERT(q2 != q);
+
+  wp_query_to_s(q2, 100, buf);
+  ASSERT(!strcmp(buf, "(AND body:\"XiY\" body:\"XeatY\" ~mice)"));
+
   return NO_ERROR;
 }

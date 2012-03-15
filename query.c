@@ -32,6 +32,7 @@ wp_query* wp_query_substitute(wp_query* other, const char *(*substituter)(const 
   else ret->field = NULL;
 
   if(other->field && other->word) ret->word = substituter(other->field, other->word);
+  else if(other->word) ret->word = strdup(other->word); // labels have this form
   else ret->word = NULL;
 
   ret->children = ret->next = ret->last = NULL; // set below
