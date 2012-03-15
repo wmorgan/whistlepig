@@ -25,3 +25,4 @@ integration-tests/enron1m.mbox
 integration-tests/enron1m.index*
 ruby/pkg/
 ruby/README
+ruby/COPYING

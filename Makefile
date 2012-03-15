@@ -197,7 +197,7 @@ debug:
 
 EXPORTFILES=$(CSRCFILES) $(HEADERFILES) $(GENFILES)
 rubygem: $(EXPORTFILES)
-	cp README ruby
+	cp README COPYING ruby
 	cp $+ ruby/ext/whistlepig
 	cd ruby && rake gem
 	@echo gem is in ruby/pkg/
