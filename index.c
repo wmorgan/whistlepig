@@ -71,8 +71,8 @@ wp_error* wp_index_load(wp_index** indexptr, const char* pathname_base) {
     else {
       // segments return docids 1 through N, so the num_docs in a segment is
       // also the max document id
-      postings_region* prevpr = MMAP_OBJ(index->segments[index->num_segments - 1].postings, postings_region);
-      index->docid_offsets[index->num_segments] = prevpr->num_docs + index->docid_offsets[index->num_segments - 1];
+      segment_info* prevsi = MMAP_OBJ(index->segments[index->num_segments - 1].seginfo, segment_info);
+      index->docid_offsets[index->num_segments] = prevsi->num_docs + index->docid_offsets[index->num_segments - 1];
     }
 
     index->num_segments++;
@@ -187,8 +187,8 @@ wp_error* wp_index_add_entry(wp_index* index, wp_entry* entry, uint64_t* doc_id)
     index->num_segments++;
 
     // set the docid_offset
-    postings_region* prevpr = MMAP_OBJ(index->segments[index->num_segments - 2].postings, postings_region);
-    index->docid_offsets[index->num_segments - 1] = prevpr->num_docs + index->docid_offsets[index->num_segments - 2];
+    segment_info* prevsi = MMAP_OBJ(index->segments[index->num_segments - 1].seginfo, segment_info);
+    index->docid_offsets[index->num_segments - 1] = prevsi->num_docs + index->docid_offsets[index->num_segments - 2];
 
     seg = &index->segments[index->num_segments - 1];
     DEBUG("loaded new segment %d at %p", index->num_segments - 1, &index->segments[index->num_segments - 1]);

@@ -268,10 +268,10 @@ static wp_error* neg_init_search_state(wp_query* q, wp_segment* seg) {
 
   RELAY_ERROR(wp_search_init_search_state(q->children, seg));
 
-  postings_region* pr = MMAP_OBJ(seg->postings, postings_region);
+  segment_info* si = MMAP_OBJ(seg->seginfo, segment_info);
   neg_search_state* state = q->search_data = malloc(sizeof(neg_search_state));
 
-  state->cur = pr->num_docs + 1;
+  state->cur = si->num_docs + 1;
   search_result result;
   int done;
   RELAY_ERROR(query_next_doc(q->children, seg, &result, &done));
@@ -294,8 +294,8 @@ static wp_error* neg_release_search_state(wp_query* q) {
 static wp_error* every_init_search_state(wp_query* q, wp_segment* seg) {
   q->search_data = malloc(sizeof(docid_t));
 
-  postings_region* pr = MMAP_OBJ(seg->postings, postings_region);
-  *(docid_t*)q->search_data = pr->num_docs;
+  segment_info* si = MMAP_OBJ(seg->seginfo, segment_info);
+  *(docid_t*)q->search_data = si->num_docs;
 
   return NO_ERROR;
 }

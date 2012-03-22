@@ -6,18 +6,29 @@
 #define POSTINGS_REGION_TYPE_IMMUTABLE_VBE   1
 #define POSTINGS_REGION_TYPE_MUTABLE_NO_POSITIONS 2 // bigger, mutable
 
+#define INDEX_VERSION 3
+
 #define wp_segment_label_posting_at(posting_region, offset) ((label_posting*)(posting_region->postings + offset))
 
-static void postings_region_init(postings_region* pr, uint32_t initial_size, uint32_t index_type_and_flags) {
-  pr->index_type_and_flags = index_type_and_flags;
-  pr->num_docs = 0;
+static void postings_region_init(postings_region* pr, uint32_t initial_size, uint32_t postings_type_and_flags) {
+  pr->postings_type_and_flags = postings_type_and_flags;
   pr->num_postings = 0;
   pr->postings_head = 1; // skip one byte, which is reserved as OFFSET_NONE
   pr->postings_tail = initial_size;
 }
 
-RAISING_STATIC(postings_region_validate(postings_region* pr, uint32_t index_type_and_flags)) {
-  if(pr->index_type_and_flags != index_type_and_flags) RAISE_ERROR("segment has index type %u; expecting type %u", pr->index_type_and_flags, index_type_and_flags);
+static void segment_info_init(segment_info* si, uint32_t index_version) {
+  si->index_version = index_version;
+  si->num_docs = 0;
+}
+
+RAISING_STATIC(segment_info_validate(segment_info* si, uint32_t index_version)) {
+  if(si->index_version != index_version) RAISE_ERROR("segment has index type %u; expecting type %u", si->index_version, index_version);
+  return NO_ERROR;
+}
+
+RAISING_STATIC(postings_region_validate(postings_region* pr, uint32_t postings_type_and_flags)) {
+  if(pr->postings_type_and_flags != postings_type_and_flags) RAISE_ERROR("postings region has type %u; expecting type %u", pr->postings_type_and_flags, postings_type_and_flags);
   return NO_ERROR;
 }
 
@@ -26,6 +37,11 @@ RAISING_STATIC(postings_region_validate(postings_region* pr, uint32_t index_type
 
 wp_error* wp_segment_load(wp_segment* segment, const char* pathname_base) {
   char fn[FN_SIZE];
+
+  // open the segment info
+  snprintf(fn, 128, "%s.si", pathname_base);
+  RELAY_ERROR(mmap_obj_load(&segment->seginfo, "wp/seginfo", fn));
+  RELAY_ERROR(segment_info_validate(MMAP_OBJ(segment->seginfo, segment_info), INDEX_VERSION));
 
   // open the string pool
   snprintf(fn, 128, "%s.sp", pathname_base);
@@ -56,6 +72,11 @@ wp_error* wp_segment_load(wp_segment* segment, const char* pathname_base) {
 
 wp_error* wp_segment_create(wp_segment* segment, const char* pathname_base) {
   char fn[FN_SIZE];
+
+  // create the segment info
+  snprintf(fn, 128, "%s.si", pathname_base);
+  RELAY_ERROR(mmap_obj_create(&segment->seginfo, "wp/seginfo", fn, sizeof(segment_info)));
+  segment_info_init(MMAP_OBJ(segment->seginfo, segment_info), INDEX_VERSION);
 
   // create the string pool
   snprintf(fn, 128, "%s.sp", pathname_base);
@@ -96,6 +117,8 @@ int wp_segment_exists(const char* pathname_base) {
 wp_error* wp_segment_delete(const char* pathname_base) {
   char fn[FN_SIZE];
 
+  snprintf(fn, 128, "%s.si", pathname_base);
+  unlink(fn);
   snprintf(fn, 128, "%s." WP_SEGMENT_POSTING_REGION_PATH_SUFFIX, pathname_base);
   unlink(fn);
   snprintf(fn, 128, "%s.sp", pathname_base);
@@ -613,12 +636,13 @@ wp_error* wp_segment_remove_label(wp_segment* s, const char* label, docid_t doc_
 }
 
 wp_error* wp_segment_grab_docid(wp_segment* segment, docid_t* doc_id) {
-  postings_region* pr = MMAP_OBJ(segment->postings, postings_region);
-  *doc_id = ++pr->num_docs;
+  segment_info* si = MMAP_OBJ(segment->seginfo, segment_info);
+  *doc_id = ++si->num_docs;
   return NO_ERROR;
 }
 
 wp_error* wp_segment_dumpinfo(wp_segment* segment, FILE* stream) {
+  segment_info* si = MMAP_OBJ(segment->seginfo, segment_info);
   postings_region* pr = MMAP_OBJ(segment->postings, postings_region);
   stringmap* sh = MMAP_OBJ(segment->stringmap, stringmap);
   stringpool* sp = MMAP_OBJ(segment->stringpool, stringpool);
@@ -626,8 +650,8 @@ wp_error* wp_segment_dumpinfo(wp_segment* segment, FILE* stream) {
 
   #define p(a, b) 100.0 * (float)a / (float)b
 
-  fprintf(stream, "segment has type %u\n", pr->index_type_and_flags);
-  fprintf(stream, "segment has %u docs and %u postings\n", pr->num_docs, pr->num_postings);
+  fprintf(stream, "segment has type %u\n", pr->postings_type_and_flags);
+  fprintf(stream, "segment has %u docs and %u postings\n", si->num_docs, pr->num_postings);
   fprintf(stream, "postings region is %6ukb at %3.1f%% saturation\n", segment->postings.header->size / 1024, p(pr->postings_head, pr->postings_tail));
   fprintf(stream, "    string hash is %6ukb at %3.1f%% saturation\n", segment->stringmap.header->size / 1024, p(sh->n_occupied, sh->n_buckets));
   fprintf(stream, "     stringpool is %6ukb at %3.1f%% saturation\n", segment->stringpool.header->size / 1024, p(sp->next, sp->size));
@@ -637,6 +661,6 @@ wp_error* wp_segment_dumpinfo(wp_segment* segment, FILE* stream) {
 }
 
 uint64_t wp_segment_num_docs(wp_segment* seg) {
-  postings_region* pr = MMAP_OBJ(seg->postings, postings_region);
-  return pr->num_docs;
+  segment_info* si = MMAP_OBJ(seg->seginfo, segment_info);
+  return si->num_docs;
 }

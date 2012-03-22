@@ -48,8 +48,9 @@ TEST(initial_state) {
   wp_segment segment;
   RELAY_ERROR(setup(&segment));
 
+  segment_info* si = MMAP_OBJ(segment.seginfo, segment_info);
+  ASSERT(si->num_docs == 0);
   postings_region* pr = MMAP_OBJ(segment.postings, postings_region);
-  ASSERT(pr->num_docs == 0);
   ASSERT(pr->num_postings == 0);
 
   RELAY_ERROR(wp_segment_unload(&segment));
@@ -69,8 +70,9 @@ TEST(adding_a_doc_increments_counts) {
   positions[0] = 1;
   RELAY_ERROR(wp_segment_add_posting(&segment, "body", "there", doc_id, 1, positions));
 
+  segment_info* si = MMAP_OBJ(segment.seginfo, segment_info);
+  ASSERT(si->num_docs == 1);
   postings_region* pr = MMAP_OBJ(segment.postings, postings_region);
-  ASSERT(pr->num_docs == 1);
   ASSERT(pr->num_postings == 2);
 
   RELAY_ERROR(wp_segment_unload(&segment));

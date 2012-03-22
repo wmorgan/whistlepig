@@ -66,15 +66,20 @@ typedef struct label_posting {
 
 // the header for the postings region
 typedef struct postings_region {
-  uint32_t index_type_and_flags;
-  uint32_t num_docs;
+  uint32_t postings_type_and_flags;
   uint32_t num_postings;
   uint32_t postings_head, postings_tail;
   uint8_t postings[]; // where the postings go yo
 } postings_region;
 
+typedef struct segment_info {
+  uint32_t index_version;
+  uint32_t num_docs;
+} segment_info;
+
 // a segment is a bunch of all these things
 typedef struct wp_segment {
+  mmap_obj seginfo;
   mmap_obj stringmap;
   mmap_obj stringpool;
   mmap_obj termhash;
