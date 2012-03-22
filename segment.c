@@ -45,26 +45,26 @@ wp_error* wp_segment_load(wp_segment* segment, const char* pathname_base) {
 
   // open the string pool
   snprintf(fn, 128, "%s.sp", pathname_base);
-  RELAY_ERROR(mmap_obj_load(&segment->stringpool, "ti/stringpool", fn));
+  RELAY_ERROR(mmap_obj_load(&segment->stringpool, "wp/stringpool", fn));
 
   // open the string hash
   snprintf(fn, 128, "%s.sh_", pathname_base);
-  RELAY_ERROR(mmap_obj_load(&segment->stringmap, "ti/stringmap", fn));
+  RELAY_ERROR(mmap_obj_load(&segment->stringmap, "wp/stringmap", fn));
   stringmap_setup(MMAP_OBJ(segment->stringmap, stringmap), MMAP_OBJ(segment->stringpool, stringpool));
 
   // open the term hash
   snprintf(fn, 128, "%s.th", pathname_base);
-  RELAY_ERROR(mmap_obj_load(&segment->termhash, "ti/termhash", fn));
+  RELAY_ERROR(mmap_obj_load(&segment->termhash, "wp/termhash", fn));
   termhash_setup(MMAP_OBJ(segment->termhash, termhash));
 
   // open the postings region
   snprintf(fn, 128, "%s." WP_SEGMENT_POSTING_REGION_PATH_SUFFIX, pathname_base);
-  RELAY_ERROR(mmap_obj_load(&segment->postings, "ti/postings", fn));
+  RELAY_ERROR(mmap_obj_load(&segment->postings, "wp/postings", fn));
   RELAY_ERROR(postings_region_validate(MMAP_OBJ(segment->postings, postings_region), POSTINGS_REGION_TYPE_IMMUTABLE_VBE));
 
   // open the labels postings region
   snprintf(fn, 128, "%s.lb", pathname_base);
-  RELAY_ERROR(mmap_obj_load(&segment->labels, "ti/labels", fn));
+  RELAY_ERROR(mmap_obj_load(&segment->labels, "wp/labels", fn));
   RELAY_ERROR(postings_region_validate(MMAP_OBJ(segment->labels, postings_region), POSTINGS_REGION_TYPE_MUTABLE_NO_POSITIONS));
 
   return NO_ERROR;
@@ -80,27 +80,27 @@ wp_error* wp_segment_create(wp_segment* segment, const char* pathname_base) {
 
   // create the string pool
   snprintf(fn, 128, "%s.sp", pathname_base);
-  RELAY_ERROR(mmap_obj_create(&segment->stringpool, "ti/stringpool", fn, stringpool_initial_size()));
+  RELAY_ERROR(mmap_obj_create(&segment->stringpool, "wp/stringpool", fn, stringpool_initial_size()));
   stringpool_init(MMAP_OBJ(segment->stringpool, stringpool));
 
   // create the string hash
   snprintf(fn, 128, "%s.sh_", pathname_base);
-  RELAY_ERROR(mmap_obj_create(&segment->stringmap, "ti/stringmap", fn, stringmap_initial_size()));
+  RELAY_ERROR(mmap_obj_create(&segment->stringmap, "wp/stringmap", fn, stringmap_initial_size()));
   stringmap_init(MMAP_OBJ(segment->stringmap, stringmap), MMAP_OBJ(segment->stringpool, stringpool));
 
   // create the term hash
   snprintf(fn, 128, "%s.th", pathname_base);
-  RELAY_ERROR(mmap_obj_create(&segment->termhash, "ti/termhash", fn, termhash_initial_size()));
+  RELAY_ERROR(mmap_obj_create(&segment->termhash, "wp/termhash", fn, termhash_initial_size()));
   termhash_init(MMAP_OBJ(segment->termhash, termhash));
 
   // create the postings region
   snprintf(fn, 128, "%s." WP_SEGMENT_POSTING_REGION_PATH_SUFFIX, pathname_base);
-  RELAY_ERROR(mmap_obj_create(&segment->postings, "ti/postings", fn, sizeof(postings_region) + INITIAL_POSTINGS_SIZE));
+  RELAY_ERROR(mmap_obj_create(&segment->postings, "wp/postings", fn, sizeof(postings_region) + INITIAL_POSTINGS_SIZE));
   postings_region_init(MMAP_OBJ(segment->postings, postings_region), INITIAL_POSTINGS_SIZE, POSTINGS_REGION_TYPE_IMMUTABLE_VBE);
 
   // create the labels postings region
   snprintf(fn, 128, "%s.lb", pathname_base);
-  RELAY_ERROR(mmap_obj_create(&segment->labels, "ti/labels", fn, sizeof(postings_region) + INITIAL_POSTINGS_SIZE));
+  RELAY_ERROR(mmap_obj_create(&segment->labels, "wp/labels", fn, sizeof(postings_region) + INITIAL_POSTINGS_SIZE));
   postings_region_init(MMAP_OBJ(segment->labels, postings_region), INITIAL_POSTINGS_SIZE, POSTINGS_REGION_TYPE_MUTABLE_NO_POSITIONS);
 
   return NO_ERROR;
