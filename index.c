@@ -175,7 +175,9 @@ wp_error* wp_index_add_entry(wp_index* index, wp_entry* entry, uint64_t* doc_id)
   // first, ensure we have enough space in the current segment
   uint32_t postings_bytes;
   RELAY_ERROR(wp_entry_sizeof_postings_region(entry, seg, &postings_bytes));
+  RELAY_ERROR(wp_segment_grab_writelock(seg));
   RELAY_ERROR(wp_segment_ensure_fit(seg, postings_bytes, 0, &success));
+  RELAY_ERROR(wp_segment_release_writelock(seg));
 
   // if not, we need to open a new one
   if(!success) {
@@ -199,8 +201,10 @@ wp_error* wp_index_add_entry(wp_index* index, wp_entry* entry, uint64_t* doc_id)
   }
 
   docid_t seg_doc_id;
+  RELAY_ERROR(wp_segment_grab_writelock(seg));
   RELAY_ERROR(wp_segment_grab_docid(seg, &seg_doc_id));
   RELAY_ERROR(wp_entry_write_to_segment(entry, seg, seg_doc_id));
+  RELAY_ERROR(wp_segment_release_writelock(seg));
   *doc_id = seg_doc_id + index->docid_offsets[index->num_segments - 1];
 
   return NO_ERROR;
@@ -226,7 +230,10 @@ wp_error* wp_index_dumpinfo(wp_index* index, FILE* stream) {
   fprintf(stream, "index has %d segments\n", index->num_segments);
   for(int i = 0; i < index->num_segments; i++) {
     fprintf(stream, "\nsegment %d:\n", i);
-    RELAY_ERROR(wp_segment_dumpinfo(&index->segments[i], stream));
+    wp_segment* seg = &index->segments[i];
+    RELAY_ERROR(wp_segment_grab_readlock(seg));
+    RELAY_ERROR(wp_segment_dumpinfo(seg, stream));
+    RELAY_ERROR(wp_segment_release_readlock(seg));
   }
 
   return NO_ERROR;
@@ -254,8 +261,12 @@ wp_error* wp_index_add_label(wp_index* index, const char* label, uint64_t doc_id
 
   for(uint32_t i = index->num_segments; i > 0; i--) {
     if(doc_id > index->docid_offsets[i - 1]) {
+      wp_segment* seg = &index->segments[i - 1];
+
       DEBUG("found doc %llu in segment %u", doc_id, i - 1);
-      RELAY_ERROR(wp_segment_add_label(&index->segments[i - 1], label, (docid_t)(doc_id - index->docid_offsets[i - 1])));
+      RELAY_ERROR(wp_segment_grab_writelock(seg));
+      RELAY_ERROR(wp_segment_add_label(seg, label, (docid_t)(doc_id - index->docid_offsets[i - 1])));
+      RELAY_ERROR(wp_segment_release_writelock(seg));
       found = 1;
       break;
     }
@@ -272,8 +283,12 @@ wp_error* wp_index_remove_label(wp_index* index, const char* label, uint64_t doc
 
   for(uint32_t i = index->num_segments; i > 0; i--) {
     if(doc_id > index->docid_offsets[i - 1]) {
+      wp_segment* seg = &index->segments[i - 1];
+
       DEBUG("found doc %llu in segment %u", doc_id, i - 1);
-      RELAY_ERROR(wp_segment_remove_label(&index->segments[i - 1], label, (docid_t)(doc_id - index->docid_offsets[i - 1])));
+      RELAY_ERROR(wp_segment_grab_writelock(seg));
+      RELAY_ERROR(wp_segment_remove_label(seg, label, (docid_t)(doc_id - index->docid_offsets[i - 1])));
+      RELAY_ERROR(wp_segment_release_writelock(seg));
       found = 1;
       break;
     }
@@ -285,13 +300,18 @@ wp_error* wp_index_remove_label(wp_index* index, const char* label, uint64_t doc
   return NO_ERROR;
 }
 
-uint64_t wp_index_num_docs(wp_index* index) {
-  uint64_t ret = 0;
+wp_error* wp_index_num_docs(wp_index* index, uint64_t* num_docs) {
+  *num_docs = 0;
 
   // TODO check for overflow or some shit
-  for(uint32_t i = index->num_segments; i > 0; i--) ret += wp_segment_num_docs(&index->segments[i - 1]);
+  for(uint32_t i = index->num_segments; i > 0; i--) {
+    wp_segment* seg = &index->segments[i - 1];
+    RELAY_ERROR(wp_segment_grab_readlock(seg));
+    *num_docs += wp_segment_num_docs(seg);
+    RELAY_ERROR(wp_segment_release_readlock(seg));
+  }
 
-  return ret;
+  return NO_ERROR;
 }
 
 // insane. but i'm putting this here. not defined in c99. don't want to make a

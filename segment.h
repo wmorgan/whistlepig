@@ -15,6 +15,8 @@
 // different, mutable format. regular text is stored in a compressed format
 // that is not amenable to later changes.
 
+#include <pthread.h>
+
 #include "defaults.h"
 #include "stringmap.h"
 #include "termhash.h"
@@ -75,6 +77,7 @@ typedef struct postings_region {
 typedef struct segment_info {
   uint32_t index_version;
   uint32_t num_docs;
+  pthread_rwlock_t lock;
 } segment_info;
 
 // a segment is a bunch of all these things
@@ -106,6 +109,12 @@ uint64_t wp_segment_num_docs(wp_segment* s);
 
 // public: delete a segment from disk
 wp_error* wp_segment_delete(const char* pathname_base) RAISES_ERROR;
+
+// public: lock grabbing and releasing
+wp_error* wp_segment_grab_readlock(wp_segment* seg) RAISES_ERROR;
+wp_error* wp_segment_release_readlock(wp_segment* seg) RAISES_ERROR;
+wp_error* wp_segment_grab_writelock(wp_segment* seg) RAISES_ERROR;
+wp_error* wp_segment_release_writelock(wp_segment* seg) RAISES_ERROR;
 
 // private: read a posting from the postings region at a given offset
 wp_error* wp_segment_read_posting(wp_segment* s, uint32_t offset, posting* po, int include_positions) RAISES_ERROR;

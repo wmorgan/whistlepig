@@ -17,9 +17,40 @@ static void postings_region_init(postings_region* pr, uint32_t initial_size, uin
   pr->postings_tail = initial_size;
 }
 
-static void segment_info_init(segment_info* si, uint32_t index_version) {
+RAISING_STATIC(segment_info_init(segment_info* si, uint32_t index_version)) {
   si->index_version = index_version;
   si->num_docs = 0;
+
+  pthread_rwlockattr_t attr;
+  if(pthread_rwlockattr_init(&attr) != 0) RAISE_ERROR("cannot initialize pthreads rwlockattr");
+  if(pthread_rwlockattr_setpshared(&attr, PTHREAD_PROCESS_SHARED) != 0) RAISE_ERROR("cannot set pthreads rwlockattr to PTHREAD_PROCESS_SHARED");
+  if(pthread_rwlock_init(&si->lock, &attr) != 0) RAISE_ERROR("cannot initialize pthreads rwlock");
+
+  return NO_ERROR;
+}
+
+wp_error* wp_segment_grab_readlock(wp_segment* seg) {
+  segment_info* si = MMAP_OBJ(seg->seginfo, segment_info);
+  if(pthread_rwlock_rdlock(&si->lock) != 0) RAISE_SYSERROR("grabbing segment readlock");
+  return NO_ERROR;
+}
+
+wp_error* wp_segment_release_readlock(wp_segment* seg) {
+  segment_info* si = MMAP_OBJ(seg->seginfo, segment_info);
+  if(pthread_rwlock_unlock(&si->lock) != 0) RAISE_SYSERROR("releasing segment readlock");
+  return NO_ERROR;
+}
+
+wp_error* wp_segment_grab_writelock(wp_segment* seg) {
+  segment_info* si = MMAP_OBJ(seg->seginfo, segment_info);
+  if(pthread_rwlock_wrlock(&si->lock) != 0) RAISE_SYSERROR("grabbing segment writelock");
+  return NO_ERROR;
+}
+
+wp_error* wp_segment_release_writelock(wp_segment* seg) {
+  segment_info* si = MMAP_OBJ(seg->seginfo, segment_info);
+  if(pthread_rwlock_unlock(&si->lock) != 0) RAISE_SYSERROR("releasing segment writelock");
+  return NO_ERROR;
 }
 
 RAISING_STATIC(segment_info_validate(segment_info* si, uint32_t index_version)) {
@@ -76,7 +107,7 @@ wp_error* wp_segment_create(wp_segment* segment, const char* pathname_base) {
   // create the segment info
   snprintf(fn, 128, "%s.si", pathname_base);
   RELAY_ERROR(mmap_obj_create(&segment->seginfo, "wp/seginfo", fn, sizeof(segment_info)));
-  segment_info_init(MMAP_OBJ(segment->seginfo, segment_info), INDEX_VERSION);
+  RELAY_ERROR(segment_info_init(MMAP_OBJ(segment->seginfo, segment_info), INDEX_VERSION));
 
   // create the string pool
   snprintf(fn, 128, "%s.sp", pathname_base);

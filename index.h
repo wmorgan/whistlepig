@@ -45,7 +45,7 @@ wp_error* wp_index_unload(wp_index* index) RAISES_ERROR;
 wp_error* wp_index_free(wp_index* index) RAISES_ERROR;
 
 // public: returns the number of documents in the index.
-uint64_t wp_index_num_docs(wp_index* index);
+wp_error* wp_index_num_docs(wp_index* index, uint64_t* num_docs) RAISES_ERROR;
 
 // public: initializes a query for use on the index. must be called before
 // run_query
