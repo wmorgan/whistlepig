@@ -15,11 +15,11 @@
 #include <stdint.h>
 #include "error.h"
 
-// the header, with a magic string
+// what's actually mmap'd
 typedef struct mmap_obj_header {
   char magic[MMAP_OBJ_MAGIC_SIZE];
-  uint32_t size;
-  char obj[];
+  uint32_t size; // size of payload, not including this header
+  char obj[];    // the payload itself
 } mmap_obj_header;
 
 // what we pass around at runtime

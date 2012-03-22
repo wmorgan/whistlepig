@@ -10,9 +10,8 @@
 // and stringpool, it uses a slightly funny API that never allocates memory,
 // but instead operates on pointers to preallocated blocks of memory.
 //
-// uses a stringpool internally to do the int->string mapping. so if you're so
-// you shouldn't have to interact with the stringpool directly; you can just
-// use this object.
+// uses a stringpool internally to do the int->string mapping.  you shouldn't
+// have to interact with the stringpool directly; you can just use this object.
 //
 // like termhash and pool, has a slightly funny API that is designed to work on
 // a pre-allocated chunk of memory rather than allocate any of its own.
