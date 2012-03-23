@@ -101,6 +101,9 @@ wp_error* wp_segment_create(wp_segment* segment, const char* pathname_base) RAIS
 // public: load a segment, raising an error unless it already exists
 wp_error* wp_segment_load(wp_segment* segment, const char* pathname_base) RAISES_ERROR;
 
+// public: reload a segment as necessary, in case an external writer has changed the mmap object sizes
+wp_error* wp_segment_reload(wp_segment* segment) RAISES_ERROR;
+
 // public: unload a segment
 wp_error* wp_segment_unload(wp_segment* s) RAISES_ERROR;
 

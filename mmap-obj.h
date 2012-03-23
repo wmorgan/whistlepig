@@ -7,7 +7,7 @@
 // wrappers around the logic of loading, unloading, and resizing
 // arbitrary-sized objects using mmap.
 //
-// note that aany of the mmap_obj_* functions may change the object pointer, so
+// note that any of the mmap_obj_* functions may change the object pointer, so
 // use MMAP_OBJ or MAP_OBJ_PTR to dereference (again) after calling them.
 
 #define MMAP_OBJ_MAGIC_SIZE 15
@@ -25,6 +25,7 @@ typedef struct mmap_obj_header {
 // what we pass around at runtime
 typedef struct mmap_obj {
   int fd;
+  uint32_t loaded_size; // compare against header->sizer
   mmap_obj_header* content;
 } mmap_obj;
 
@@ -42,6 +43,10 @@ wp_error* mmap_obj_create(mmap_obj* o, const char* magic, const char* pathname, 
 // public: load an object, raising an error if it doesn't exist (or if the
 // magic doesn't match)
 wp_error* mmap_obj_load(mmap_obj* o, const char* magic, const char* pathname) RAISES_ERROR;
+
+// public: load an object, but only if the size has changed since the
+// first load.
+wp_error* mmap_obj_reload(mmap_obj* o) RAISES_ERROR;
 
 // public: resize an object. note that the obj pointer might change after this call.
 wp_error* mmap_obj_resize(mmap_obj* o, uint32_t new_size) RAISES_ERROR;

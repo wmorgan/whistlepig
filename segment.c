@@ -101,6 +101,17 @@ wp_error* wp_segment_load(wp_segment* segment, const char* pathname_base) {
   return NO_ERROR;
 }
 
+wp_error* wp_segment_reload(wp_segment* segment) {
+  RELAY_ERROR(mmap_obj_reload(&segment->seginfo));
+  RELAY_ERROR(mmap_obj_reload(&segment->stringpool));
+  RELAY_ERROR(mmap_obj_reload(&segment->stringmap));
+  RELAY_ERROR(mmap_obj_reload(&segment->termhash));
+  RELAY_ERROR(mmap_obj_reload(&segment->postings));
+  RELAY_ERROR(mmap_obj_reload(&segment->labels));
+
+  return NO_ERROR;
+}
+
 wp_error* wp_segment_create(wp_segment* segment, const char* pathname_base) {
   char fn[FN_SIZE];
 

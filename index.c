@@ -114,6 +114,7 @@ wp_error* wp_index_run_query(wp_index* index, wp_query* query, uint32_t max_num_
     DEBUG("searching segment %d", query->segment_idx);
     wp_segment* seg = &index->segments[query->segment_idx];
     RELAY_ERROR(wp_segment_grab_readlock(seg));
+    RELAY_ERROR(wp_segment_reload(seg));
     RELAY_ERROR(wp_search_run_query_on_segment(query, seg, want_num_results, &got_num_results, segment_results));
     RELAY_ERROR(wp_segment_release_readlock(seg));
     DEBUG("asked segment %d for %d results, got %d", query->segment_idx, want_num_results, got_num_results);
@@ -235,6 +236,7 @@ wp_error* wp_index_dumpinfo(wp_index* index, FILE* stream) {
     fprintf(stream, "\nsegment %d:\n", i);
     wp_segment* seg = &index->segments[i];
     RELAY_ERROR(wp_segment_grab_readlock(seg));
+    RELAY_ERROR(wp_segment_reload(seg));
     RELAY_ERROR(wp_segment_dumpinfo(seg, stream));
     RELAY_ERROR(wp_segment_release_readlock(seg));
   }
@@ -310,6 +312,7 @@ wp_error* wp_index_num_docs(wp_index* index, uint64_t* num_docs) {
   for(uint32_t i = index->num_segments; i > 0; i--) {
     wp_segment* seg = &index->segments[i - 1];
     RELAY_ERROR(wp_segment_grab_readlock(seg));
+    RELAY_ERROR(wp_segment_reload(seg));
     *num_docs += wp_segment_num_docs(seg);
     RELAY_ERROR(wp_segment_release_readlock(seg));
   }

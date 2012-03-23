@@ -21,7 +21,7 @@ wp_error* mmap_obj_create(mmap_obj* o, const char* magic, const char* pathname, 
   o->content = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, o->fd, 0);
   if(o->content == MAP_FAILED) RAISE_SYSERROR("mmap");
   strncpy(o->content->magic, magic, MMAP_OBJ_MAGIC_SIZE);
-  o->content->size = initial_size;
+  o->content->size = o->loaded_size = initial_size;
   DEBUG("created new %s object with %u bytes", magic, size);
 
   return NO_ERROR;
@@ -39,6 +39,8 @@ wp_error* mmap_obj_load(mmap_obj* o, const char* magic, const char* pathname) {
 
   RELAY_ERROR(validate(o->content, magic));
 
+  o->loaded_size = o->content->size;
+
   uint32_t size = o->content->size + (uint32_t)sizeof(mmap_obj_header);
   DEBUG("full size is %u bytes (including %u-byte header)", size, sizeof(mmap_obj_header));
   if(munmap(o->content, sizeof(mmap_obj_header)) == -1) RAISE_SYSERROR("munmap");
@@ -46,6 +48,19 @@ wp_error* mmap_obj_load(mmap_obj* o, const char* magic, const char* pathname) {
   o->content = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, o->fd, 0);
   if(o->content == MAP_FAILED) RAISE_SYSERROR("full mmap");
   DEBUG("loaded full %s object of %u bytes", magic, size);
+
+  return NO_ERROR;
+}
+
+wp_error* mmap_obj_reload(mmap_obj* o) {
+  if(o->loaded_size != o->content->size) {
+    DEBUG("need to reload %s because size of %u is now %u", o->content->magic, o->loaded_size, o->content->size);
+    uint32_t new_size = o->content->size + (uint32_t)sizeof(mmap_obj_header);
+    if(munmap(o->content, sizeof(mmap_obj_header) + o->loaded_size) == -1) RAISE_SYSERROR("munmap");
+    o->content = mmap(NULL, new_size, PROT_READ | PROT_WRITE, MAP_SHARED, o->fd, 0);
+    if(o->content == MAP_FAILED) RAISE_SYSERROR("mmap");
+    DEBUG("loaded %u bytes after reload. header is at %p", o->content->size, o->content);
+  }
 
   return NO_ERROR;
 }
@@ -62,7 +77,7 @@ wp_error* mmap_obj_resize(mmap_obj* o, uint32_t data_size) {
   //lseek(fd, 0, SEEK_SET); // not necessary!
   o->content = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, o->fd, 0);
   if(o->content == MAP_FAILED) RAISE_SYSERROR("mmap");
-  o->content->size = data_size;
+  o->content->size = o->loaded_size = data_size;
   DEBUG("loaded %u bytes after resize. header is at %p", o->content->size, o->content);
 
   return NO_ERROR;
