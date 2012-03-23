@@ -112,7 +112,10 @@ wp_error* wp_index_run_query(wp_index* index, wp_query* query, uint32_t max_num_
     search_result* segment_results = malloc(sizeof(search_result) * want_num_results);
 
     DEBUG("searching segment %d", query->segment_idx);
-    RELAY_ERROR(wp_search_run_query_on_segment(query, &index->segments[query->segment_idx], want_num_results, &got_num_results, segment_results));
+    wp_segment* seg = &index->segments[query->segment_idx];
+    RELAY_ERROR(wp_segment_grab_readlock(seg));
+    RELAY_ERROR(wp_search_run_query_on_segment(query, seg, want_num_results, &got_num_results, segment_results));
+    RELAY_ERROR(wp_segment_release_readlock(seg));
     DEBUG("asked segment %d for %d results, got %d", query->segment_idx, want_num_results, got_num_results);
 
     // extract the per-segment docids from the search results and adjust by
