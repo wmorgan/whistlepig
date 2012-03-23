@@ -25,16 +25,16 @@ typedef struct mmap_obj_header {
 // what we pass around at runtime
 typedef struct mmap_obj {
   int fd;
-  mmap_obj_header* header;
+  mmap_obj_header* content;
 } mmap_obj;
 
 // public API
 
 // public: get the actual object from an mmap_obj
-#define MMAP_OBJ(v, type) ((type*)&v.header->obj)
+#define MMAP_OBJ(v, type) ((type*)&v.content->obj)
 
 // public: get the object from an mmap_obj*
-#define MMAP_OBJ_PTR(v, type) (type*)v->header->obj
+#define MMAP_OBJ_PTR(v, type) (type*)v->content->obj
 
 // public: create an object with an initial size
 wp_error* mmap_obj_create(mmap_obj* o, const char* magic, const char* pathname, uint32_t initial_size) RAISES_ERROR;

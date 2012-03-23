@@ -683,10 +683,10 @@ wp_error* wp_segment_dumpinfo(wp_segment* segment, FILE* stream) {
 
   fprintf(stream, "segment has type %u\n", pr->postings_type_and_flags);
   fprintf(stream, "segment has %u docs and %u postings\n", si->num_docs, pr->num_postings);
-  fprintf(stream, "postings region is %6ukb at %3.1f%% saturation\n", segment->postings.header->size / 1024, p(pr->postings_head, pr->postings_tail));
-  fprintf(stream, "    string hash is %6ukb at %3.1f%% saturation\n", segment->stringmap.header->size / 1024, p(sh->n_occupied, sh->n_buckets));
-  fprintf(stream, "     stringpool is %6ukb at %3.1f%% saturation\n", segment->stringpool.header->size / 1024, p(sp->next, sp->size));
-  fprintf(stream, "     term hash has %6ukb at %3.1f%% saturation\n", segment->termhash.header->size / 1024, p(th->n_occupied, th->n_buckets));
+  fprintf(stream, "postings region is %6ukb at %3.1f%% saturation\n", segment->postings.content->size / 1024, p(pr->postings_head, pr->postings_tail));
+  fprintf(stream, "    string hash is %6ukb at %3.1f%% saturation\n", segment->stringmap.content->size / 1024, p(sh->n_occupied, sh->n_buckets));
+  fprintf(stream, "     stringpool is %6ukb at %3.1f%% saturation\n", segment->stringpool.content->size / 1024, p(sp->next, sp->size));
+  fprintf(stream, "     term hash has %6ukb at %3.1f%% saturation\n", segment->termhash.content->size / 1024, p(th->n_occupied, th->n_buckets));
 
   return NO_ERROR;
 }
