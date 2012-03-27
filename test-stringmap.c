@@ -3,80 +3,86 @@
 #include "error.h"
 #include "test.h"
 
-static stringmap* setup() {
-  stringpool* p = malloc(stringpool_initial_size());
-  stringpool_init(p);
-  stringmap* q = malloc(stringmap_initial_size());
-  stringmap_init(q, p);
-  return q;
+typedef struct map_and_pool {
+  stringpool* pool;
+  stringmap* map;
+} map_and_pool;
+
+static map_and_pool* setup() {
+  map_and_pool* mp = malloc(sizeof(map_and_pool));
+  mp->pool = malloc(stringpool_initial_size());
+  stringpool_init(mp->pool);
+  mp->map = malloc(stringmap_initial_size());
+  stringmap_init(mp->map);
+  return mp;
 }
 
 TEST(stringmap_initial_state) {
-  stringmap* q = setup();
-  ASSERT(q->n_occupied == 0);
-  ASSERT(!stringmap_needs_bump(q));
+  map_and_pool* mp = setup();
+  ASSERT(mp->map->n_occupied == 0);
+  ASSERT(!stringmap_needs_bump(mp->map));
 
-  free(q);
+  free(mp);
   return NO_ERROR;
 }
 
 TEST(stringmap_lookups_on_empty) {
-  stringmap* q = setup();
+  map_and_pool* mp = setup();
 
-  ASSERT(stringmap_string_to_int(q, "hot potato") == (uint32_t)-1);
-  ASSERT(stringmap_int_to_string(q, 0) == NULL);
-  ASSERT(stringmap_int_to_string(q, 1234) == NULL);
+  ASSERT(stringmap_string_to_int(mp->map, mp->pool, "hot potato") == (uint32_t)-1);
+  ASSERT(stringmap_int_to_string(mp->map, mp->pool, 0) == NULL);
+  ASSERT(stringmap_int_to_string(mp->map, mp->pool, 1234) == NULL);
 
-  free(q);
+  free(mp);
   return NO_ERROR;
 }
 
 TEST(stringmap_multiple_adds) {
-  stringmap* q = setup();
+  map_and_pool* mp = setup();
 
-  ASSERT(stringmap_string_to_int(q, "hot potato") == (uint32_t)-1);
+  ASSERT(stringmap_string_to_int(mp->map, mp->pool, "hot potato") == (uint32_t)-1);
   uint32_t x, y;
-  RELAY_ERROR(stringmap_add(q, "hot potato", &x));
+  RELAY_ERROR(stringmap_add(mp->map, mp->pool, "hot potato", &x));
   ASSERT(x != (uint32_t)-1);
-  RELAY_ERROR(stringmap_add(q, "hot potato", &y));
+  RELAY_ERROR(stringmap_add(mp->map, mp->pool, "hot potato", &y));
   ASSERT(y != (uint32_t)-1);
   ASSERT(x == y);
 
-  free(q);
+  free(mp);
   return NO_ERROR;
 }
 
 TEST(stringmap_hashing_is_preserved) {
-  stringmap* q = setup();
+  map_and_pool* mp = setup();
 
   uint32_t x, y;
-  RELAY_ERROR(stringmap_add(q, "hello there", &x));
+  RELAY_ERROR(stringmap_add(mp->map, mp->pool, "hello there", &x));
   ASSERT(x != (uint32_t)-1);
-  const char* a = stringmap_int_to_string(q, x);
+  const char* a = stringmap_int_to_string(mp->map, mp->pool, x);
   ASSERT(strcmp(a, "hello there") == 0);
 
-  RELAY_ERROR(stringmap_add(q, "how are you?", &y));
-  const char* b = stringmap_int_to_string(q, y);
+  RELAY_ERROR(stringmap_add(mp->map, mp->pool, "how are you?", &y));
+  const char* b = stringmap_int_to_string(mp->map, mp->pool, y);
   ASSERT(strcmp(b, "how are you?") == 0);
 
   ASSERT(x != y);
 
-  free(q);
+  free(mp);
   return NO_ERROR;
 }
 
 TEST(stringmap_detects_out_of_room) {
-  stringmap* q = setup();
+  map_and_pool* mp = setup();
 
   uint32_t x, y, z, w;
-  RELAY_ERROR(stringmap_add(q, "one", &x));
-  RELAY_ERROR(stringmap_add(q, "two", &y));
-  RELAY_ERROR(stringmap_add(q, "three", &z));
+  RELAY_ERROR(stringmap_add(mp->map, mp->pool, "one", &x));
+  RELAY_ERROR(stringmap_add(mp->map, mp->pool, "two", &y));
+  RELAY_ERROR(stringmap_add(mp->map, mp->pool, "three", &z));
 
-  wp_error* e = stringmap_add(q, "four", &w);
+  wp_error* e = stringmap_add(mp->map, mp->pool, "four", &w);
   ASSERT(e != NULL);
   wp_error_free(e);
 
-  free(q);
+  free(mp);
   return NO_ERROR;
 }

@@ -81,7 +81,6 @@ wp_error* wp_segment_load(wp_segment* segment, const char* pathname_base) {
   // open the string hash
   snprintf(fn, 128, "%s.sh_", pathname_base);
   RELAY_ERROR(mmap_obj_load(&segment->stringmap, "wp/stringmap", fn));
-  stringmap_setup(MMAP_OBJ(segment->stringmap, stringmap), MMAP_OBJ(segment->stringpool, stringpool));
 
   // open the term hash
   snprintf(fn, 128, "%s.th", pathname_base);
@@ -128,7 +127,7 @@ wp_error* wp_segment_create(wp_segment* segment, const char* pathname_base) {
   // create the string hash
   snprintf(fn, 128, "%s.sh_", pathname_base);
   RELAY_ERROR(mmap_obj_create(&segment->stringmap, "wp/stringmap", fn, stringmap_initial_size()));
-  stringmap_init(MMAP_OBJ(segment->stringmap, stringmap), MMAP_OBJ(segment->stringpool, stringpool));
+  stringmap_init(MMAP_OBJ(segment->stringmap, stringmap));
 
   // create the term hash
   snprintf(fn, 128, "%s.th", pathname_base);
@@ -197,9 +196,7 @@ RAISING_STATIC(bump_stringmap(wp_segment* s, int* success)) {
     }
     else {
       RELAY_ERROR(mmap_obj_resize(&s->stringmap, next_size));
-      sh = MMAP_OBJ(s->stringmap, stringmap); // this could have changed!
-      stringmap_setup(sh, MMAP_OBJ(s->stringpool, stringpool));
-      RELAY_ERROR(stringmap_bump_size(sh));
+      RELAY_ERROR(stringmap_bump_size(MMAP_OBJ(s->stringmap, stringmap), MMAP_OBJ(s->stringpool, stringpool)));
     }
   }
 
@@ -219,10 +216,7 @@ RAISING_STATIC(bump_stringpool(wp_segment* s, int* success)) {
     }
     else {
       RELAY_ERROR(mmap_obj_resize(&s->stringpool, next_size));
-      sp = MMAP_OBJ(s->stringpool, stringpool); // may have changed!
-      stringmap* sh = MMAP_OBJ(s->stringmap, stringmap);
-      sh->pool = sp; // need to update it here too
-      stringpool_bump_size(sp);
+      stringpool_bump_size(MMAP_OBJ(s->stringpool, stringpool));
     }
   }
 
@@ -473,11 +467,12 @@ wp_error* wp_segment_add_posting(wp_segment* s, const char* field, const char* w
   postings_region* pr = MMAP_OBJ(s->postings, postings_region);
   stringmap* sh = MMAP_OBJ(s->stringmap, stringmap);
   termhash* th = MMAP_OBJ(s->termhash, termhash);
+  stringpool* sp = MMAP_OBJ(s->stringpool, stringpool);
 
   // construct the term object
   term t;
-  RELAY_ERROR(stringmap_add(sh, field, &t.field_s));
-  RELAY_ERROR(stringmap_add(sh, word, &t.word_s));
+  RELAY_ERROR(stringmap_add(sh, sp, field, &t.field_s));
+  RELAY_ERROR(stringmap_add(sh, sp, word, &t.word_s));
 
   // find the offset of the next posting
   posting po;
@@ -545,12 +540,13 @@ wp_error* wp_segment_add_label(wp_segment* s, const char* label, docid_t doc_id)
   postings_region* pr = MMAP_OBJ(s->labels, postings_region);
   stringmap* sh = MMAP_OBJ(s->stringmap, stringmap);
   termhash* th = MMAP_OBJ(s->termhash, termhash);
+  stringpool* sp = MMAP_OBJ(s->stringpool, stringpool);
 
   // construct the term object. term objects for labels have the special
   // sentinel field value 0
   term t;
   t.field_s = 0; // label sentinel value
-  RELAY_ERROR(stringmap_add(sh, label, &t.word_s)); // get word key
+  RELAY_ERROR(stringmap_add(sh, sp, label, &t.word_s)); // get word key
 
   // find the previous and next label postings, between which we'll insert this
   // posting
@@ -623,12 +619,13 @@ wp_error* wp_segment_remove_label(wp_segment* s, const char* label, docid_t doc_
   postings_region* pr = MMAP_OBJ(s->labels, postings_region);
   stringmap* sh = MMAP_OBJ(s->stringmap, stringmap);
   termhash* th = MMAP_OBJ(s->termhash, termhash);
+  stringpool* sp = MMAP_OBJ(s->stringpool, stringpool);
 
   // construct the term object. term objects for labels have the special
   // sentinel field value 0
   term t;
   t.field_s = 0; // label sentinel value
-  t.word_s = stringmap_string_to_int(sh, label); // will be -1 if not there
+  t.word_s = stringmap_string_to_int(sh, sp, label); // will be -1 if not there
 
   // find the posting and the previous posting in the list, if any
   uint32_t prev_offset = OFFSET_NONE;

@@ -184,15 +184,16 @@ static wp_error* term_init_search_state(wp_query* q, wp_segment* seg) {
   term t;
   stringmap* sh = MMAP_OBJ(seg->stringmap, stringmap);
   termhash* th = MMAP_OBJ(seg->termhash, termhash);
+  stringpool* sp = MMAP_OBJ(seg->stringpool, stringpool);
 
   term_search_state* state = q->search_data = malloc(sizeof(term_search_state));
   state->started = 0;
 
   state->label = q->type == WP_QUERY_LABEL ? 1 : 0;
   if(state->label) t.field_s = 0;
-  else t.field_s = stringmap_string_to_int(sh, q->field); // will be -1 if not found
+  else t.field_s = stringmap_string_to_int(sh, sp, q->field); // will be -1 if not found
 
-  t.word_s = stringmap_string_to_int(sh, q->word);
+  t.word_s = stringmap_string_to_int(sh, sp, q->word);
 
   uint32_t offset = termhash_get_val(th, t);
   if(offset == (uint32_t)-1) offset = OFFSET_NONE;

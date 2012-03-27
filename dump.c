@@ -52,6 +52,7 @@ RAISING_STATIC(dump_label_posting_list(wp_segment* s, uint32_t offset)) {
 RAISING_STATIC(dump(wp_segment* segment)) {
   termhash* th = MMAP_OBJ(segment->termhash, termhash);
   stringmap* sh = MMAP_OBJ(segment->stringmap, stringmap);
+  stringpool* sp = MMAP_OBJ(segment->stringpool, stringpool);
 
   for(uint32_t i = 0; i < th->n_buckets; i++) {
     if(isempty(th->flags, i)); // do nothing
@@ -64,14 +65,14 @@ RAISING_STATIC(dump(wp_segment* segment)) {
           printf("%u: (dead list)\n", i);
         }
         else {
-          const char* label = stringmap_int_to_string(sh, t.word_s);
+          const char* label = stringmap_int_to_string(sh, sp, t.word_s);
           printf("%u: ~%s\n", i, label);
         }
         RELAY_ERROR(dump_label_posting_list(segment, th->vals[i]));
       }
       else {
-        const char* field = stringmap_int_to_string(sh, t.field_s);
-        const char* word = stringmap_int_to_string(sh, t.word_s);
+        const char* field = stringmap_int_to_string(sh, sp, t.field_s);
+        const char* word = stringmap_int_to_string(sh, sp, t.word_s);
         printf("%u: %s:'%s'\n", i, field, word);
         RELAY_ERROR(dump_posting_list(segment, th->vals[i]));
       }
