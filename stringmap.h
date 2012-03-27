@@ -35,9 +35,6 @@
 typedef struct stringmap {
   uint8_t n_buckets_idx;
   uint32_t n_buckets, size, n_occupied, upper_bound;
-  uint32_t *flags;
-  uint32_t *keys;
-  stringpool* pool;
   uint8_t boundary[];
   // in memory at this point
   // ((n_buckets >> 4) + 1) uint32_t's for the flags
@@ -47,21 +44,18 @@ typedef struct stringmap {
 // API methods
 
 // public: write a new stringmap to memory
-void stringmap_init(stringmap* h, stringpool* p);
-
-// public: set up an existing stringmap in memory
-void stringmap_setup(stringmap* h, stringpool* p);
+void stringmap_init(stringmap* h);
 
 // public: add a string. sets id to its id. dupes are fine; will just set the
 // id correctly.
-wp_error* stringmap_add(stringmap *h, const char* s, uint32_t* id) RAISES_ERROR;
+wp_error* stringmap_add(stringmap *h, stringpool* p, const char* s, uint32_t* id) RAISES_ERROR;
 
 // public: get the int value given a string. returns (uint32_t)-1 if not found.
-uint32_t stringmap_string_to_int(stringmap* h, const char* s);
+uint32_t stringmap_string_to_int(stringmap* h, stringpool* pool, const char* s);
 
 // public: get the string value given an int. returns corrupt data if the int
 // is invalid.
-const char* stringmap_int_to_string(stringmap* h, uint32_t i);
+const char* stringmap_int_to_string(stringmap* h, stringpool* p, uint32_t i);
 
 // public: returns the byte size of the stringmap
 uint32_t stringmap_size(stringmap* h);
@@ -76,6 +70,6 @@ uint32_t stringmap_next_size(stringmap* h);
 int stringmap_needs_bump(stringmap* h);
 
 // public: increases the size of the stringmap
-wp_error* stringmap_bump_size(stringmap *h) RAISES_ERROR;
+wp_error* stringmap_bump_size(stringmap *h, stringpool* pool) RAISES_ERROR;
 
 #endif
