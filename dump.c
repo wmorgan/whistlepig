@@ -68,13 +68,13 @@ RAISING_STATIC(dump(wp_segment* segment)) {
           const char* label = stringmap_int_to_string(sh, sp, t.word_s);
           printf("%u: ~%s\n", i, label);
         }
-        RELAY_ERROR(dump_label_posting_list(segment, th->vals[i]));
+        RELAY_ERROR(dump_label_posting_list(segment, thvals[i]));
       }
       else {
         const char* field = stringmap_int_to_string(sh, sp, t.field_s);
         const char* word = stringmap_int_to_string(sh, sp, t.word_s);
         printf("%u: %s:'%s'\n", i, field, word);
-        RELAY_ERROR(dump_posting_list(segment, th->vals[i]));
+        RELAY_ERROR(dump_posting_list(segment, thvals[i]));
       }
     }
   }

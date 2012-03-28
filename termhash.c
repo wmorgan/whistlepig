@@ -94,9 +94,9 @@ uint32_t termhash_get(termhash *h, term key) {
 
 wp_error* termhash_bump_size(termhash *h) {
   DEBUG("bumping size for term hash at %p with size %u and boundary %p (+%ld)", h, termhash_size(h), h->boundary, (long)((uint8_t*)h->boundary - (uint8_t*)h));
-  DEBUG("flags are at %p (+%ld)", h->flags, OFFSET(h->flags, h->boundary));
-  DEBUG(" keys are at %p (+%ld)", h->keys, OFFSET(h->keys, h->boundary));
-  DEBUG(" vals are at %p (+%ld)", h->vals, OFFSET(h->vals, h->boundary));
+  DEBUG("flags are at %p (+%ld)", TERMHASH_FLAGS(h), OFFSET(TERMHASH_FLAGS(h), h->boundary));
+  DEBUG(" keys are at %p (+%ld)", TERMHASH_KEYS(h), OFFSET(TERMHASH_KEYS(h), h->boundary));
+  DEBUG(" vals are at %p (+%ld)", TERMHASH_VALS(h), OFFSET(TERMHASH_VALS(h), h->boundary));
 
   if(h->n_buckets_idx >= (HASH_PRIME_SIZE - 1)) RAISE_ERROR("termhash can't be this big");
 
@@ -160,9 +160,9 @@ wp_error* termhash_bump_size(termhash *h) {
   h->upper_bound = (uint32_t)(h->n_buckets * HASH_UPPER + 0.5);
 
   DEBUG("after bump, term hash at %p has size %u and boundary %p (+%ld)", h, termhash_size(h), h->boundary, (long)((uint8_t*)h->boundary - (uint8_t*)h));
-  DEBUG("flags are at %p (+%ld)", h->flags, (long)((uint8_t*)h->flags - (uint8_t*)h->boundary));
-  DEBUG(" keys are at %p (+%ld)", h->keys, (long)((uint8_t*)h->keys - (uint8_t*)h->boundary));
-  DEBUG(" vals are at %p (+%ld)", h->vals, (long)((uint8_t*)h->vals - (uint8_t*)h->boundary));
+  DEBUG("flags are at %p (+%ld)", TERMHASH_FLAGS(h), OFFSET(TERMHASH_FLAGS(h), h->boundary));
+  DEBUG(" keys are at %p (+%ld)", TERMHASH_KEYS(h), OFFSET(TERMHASH_KEYS(h), h->boundary));
+  DEBUG(" vals are at %p (+%ld)", TERMHASH_VALS(h), OFFSET(TERMHASH_VALS(h), h->boundary));
 
 #ifdef DEBUGOUTPUT
 //DEBUG("and now i look like this:");
