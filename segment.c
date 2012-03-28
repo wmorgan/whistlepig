@@ -1,6 +1,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <time.h>
 #include "whistlepig.h"
 
 #define POSTINGS_REGION_TYPE_IMMUTABLE_VBE   1
@@ -29,27 +30,66 @@ RAISING_STATIC(segment_info_init(segment_info* si, uint32_t index_version)) {
   return NO_ERROR;
 }
 
-wp_error* wp_segment_grab_readlock(wp_segment* seg) {
+
+#define WP_SEGMENT_LOCK_READLOCK 0
+#define WP_SEGMENT_LOCK_WRITELOCK 1
+
+wp_error* wp_segment_grab_lock(wp_segment* seg, int lock_type) {
   segment_info* si = MMAP_OBJ(seg->seginfo, segment_info);
-  if(pthread_rwlock_rdlock(&si->lock) != 0) RAISE_SYSERROR("grabbing segment readlock");
+  const char* lock_name = (lock_type == WP_SEGMENT_LOCK_READLOCK ? "read" : "write");
+  DEBUG("grabbing %slock for segment %p", lock_name, seg);
+
+  unsigned int delay = 1000;
+  uint32_t total_delay = 0;
+  int acquired = 0;
+  while(!acquired) {
+    int ret;
+
+    switch(lock_type) {
+      case WP_SEGMENT_LOCK_READLOCK: ret = pthread_rwlock_tryrdlock(&si->lock); break;
+      case WP_SEGMENT_LOCK_WRITELOCK: ret = pthread_rwlock_trywrlock(&si->lock); break;
+    }
+
+    switch(ret) {
+      case 0: acquired = 1; break;
+      case EBUSY:
+        delay *= 2;
+        if(delay >= 1000000) RAISE_ERROR("timeout acquiring %slock: %ums", lock_name, total_delay);
+        break;
+      default: RAISE_SYSERROR("acquiring %slock", lock_name);
+    }
+
+    if(!acquired) {
+      usleep(delay);
+      total_delay += (delay / 1000);
+    }
+  }
+
+  DEBUG("acquired %slock for segment %p after %ums", lock_name, seg, total_delay);
+  return NO_ERROR;
+}
+
+wp_error* wp_segment_grab_readlock(wp_segment* seg) {
+  RELAY_ERROR(wp_segment_grab_lock(seg, WP_SEGMENT_LOCK_READLOCK));
+  return NO_ERROR;
+}
+
+wp_error* wp_segment_grab_writelock(wp_segment* seg) {
+  RELAY_ERROR(wp_segment_grab_lock(seg, WP_SEGMENT_LOCK_WRITELOCK));
   return NO_ERROR;
 }
 
 wp_error* wp_segment_release_readlock(wp_segment* seg) {
   segment_info* si = MMAP_OBJ(seg->seginfo, segment_info);
   if(pthread_rwlock_unlock(&si->lock) != 0) RAISE_SYSERROR("releasing segment readlock");
-  return NO_ERROR;
-}
-
-wp_error* wp_segment_grab_writelock(wp_segment* seg) {
-  segment_info* si = MMAP_OBJ(seg->seginfo, segment_info);
-  if(pthread_rwlock_wrlock(&si->lock) != 0) RAISE_SYSERROR("grabbing segment writelock");
+  DEBUG("released read lock for segment %p", seg);
   return NO_ERROR;
 }
 
 wp_error* wp_segment_release_writelock(wp_segment* seg) {
   segment_info* si = MMAP_OBJ(seg->seginfo, segment_info);
   if(pthread_rwlock_unlock(&si->lock) != 0) RAISE_SYSERROR("releasing segment writelock");
+  DEBUG("released write lock for segment %p", seg);
   return NO_ERROR;
 }
 
