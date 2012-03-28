@@ -54,11 +54,15 @@ RAISING_STATIC(dump(wp_segment* segment)) {
   stringmap* sh = MMAP_OBJ(segment->stringmap, stringmap);
   stringpool* sp = MMAP_OBJ(segment->stringpool, stringpool);
 
+  uint32_t* thflags = TERMHASH_FLAGS(th);
+  term* thkeys = TERMHASH_KEYS(th);
+  uint32_t* thvals = TERMHASH_FLAGS(th);
+
   for(uint32_t i = 0; i < th->n_buckets; i++) {
-    if(isempty(th->flags, i)); // do nothing
-    else if(isdel(th->flags, i)) printf("%u: [deleted]", i);
+    if(isempty(thflags, i)); // do nothing
+    else if(isdel(thflags, i)) printf("%u: [deleted]", i);
     else {
-      term t = th->keys[i];
+      term t = thkeys[i];
 
       if(t.field_s == 0) { // sentinel label value
         if(t.word_s == 0) { // sentinel dead list value

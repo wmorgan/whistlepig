@@ -34,6 +34,10 @@ typedef struct termhash {
   // n_buckets uint32_t's for the vals (offsets into postings lists)
 } termhash;
 
+#define TERMHASH_FLAGS(h) ((uint32_t*)(h)->boundary)
+#define TERMHASH_KEYS(h) ((term*)((uint32_t*)(h)->boundary + (((h)->n_buckets >> 4) + 1)))
+#define TERMHASH_VALS(h) ((uint32_t*)(TERMHASH_KEYS(h) + (h)->n_buckets))
+
 // API methods
 
 // public: make a new termhash

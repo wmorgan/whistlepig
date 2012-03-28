@@ -30,10 +30,6 @@ static int term_equals(term a, term b) {
   return a.word_s == b.word_s && a.field_s == b.field_s;
 }
 
-#define TERMHASH_FLAGS(h) ((uint32_t*)(h)->boundary)
-#define TERMHASH_KEYS(h) ((term*)((uint32_t*)(h)->boundary + (((h)->n_buckets >> 4) + 1)))
-#define TERMHASH_VALS(h) ((uint32_t*)(TERMHASH_KEYS(h) + (h)->n_buckets))
-
 void termhash_init(termhash* h) {
   h->n_buckets_idx = 1;
   h->n_buckets = prime_list[h->n_buckets_idx];
