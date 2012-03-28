@@ -101,7 +101,11 @@ wp_error* wp_index_run_query(wp_index* index, wp_query* query, uint32_t max_num_
   if(query->segment_idx == SEGMENT_UNINITIALIZED) {
     query->segment_idx = index->num_segments - 1;
     DEBUG("setting up segment %u", query->segment_idx);
-    RELAY_ERROR(wp_search_init_search_state(query, &index->segments[query->segment_idx]));
+    wp_segment* seg = &index->segments[query->segment_idx];
+    RELAY_ERROR(wp_segment_grab_readlock(seg));
+    RELAY_ERROR(wp_segment_reload(seg));
+    RELAY_ERROR(wp_search_init_search_state(query, seg));
+    RELAY_ERROR(wp_segment_release_readlock(seg));
   }
 
   // at this point, we assume we're initialized and query->segment_idx is the index
