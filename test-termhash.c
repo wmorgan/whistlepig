@@ -61,7 +61,6 @@ TEST(termhash_many_puts) { // try and force a resize
     if(termhash_needs_bump(h)) {
       h = realloc(h, termhash_next_size(h));
       if(h == NULL) RAISE_SYSERROR("realloc");
-      termhash_setup(h);
       RELAY_ERROR(termhash_bump_size(h));
     }
   }

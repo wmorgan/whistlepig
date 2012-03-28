@@ -27,9 +27,6 @@ typedef struct term {
 typedef struct termhash {
   uint8_t n_buckets_idx;
   uint32_t n_buckets, size, n_occupied, upper_bound;
-  uint32_t *flags;
-  term *keys;
-  uint32_t *vals;
   uint8_t boundary[];
   // in memory at this point
   // ((n_buckets >> 4) + 1) uint32_t's for the flags
@@ -41,9 +38,6 @@ typedef struct termhash {
 
 // public: make a new termhash
 void termhash_init(termhash* h);  // makes a new one
-
-// public: set up an existing termhash
-void termhash_setup(termhash* h); // inits one from disk
 
 // private: khash-style getter: returns the slot id, if any, given a term key.
 // you can then look this up within the vals array yourself. returns

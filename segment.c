@@ -85,7 +85,6 @@ wp_error* wp_segment_load(wp_segment* segment, const char* pathname_base) {
   // open the term hash
   snprintf(fn, 128, "%s.th", pathname_base);
   RELAY_ERROR(mmap_obj_load(&segment->termhash, "wp/termhash", fn));
-  termhash_setup(MMAP_OBJ(segment->termhash, termhash));
 
   // open the postings region
   snprintf(fn, 128, "%s." WP_SEGMENT_POSTING_REGION_PATH_SUFFIX, pathname_base);
@@ -236,9 +235,7 @@ RAISING_STATIC(bump_termhash(wp_segment* s, int* success)) {
     }
     else {
       RELAY_ERROR(mmap_obj_resize(&s->termhash, next_size));
-      th = MMAP_OBJ(s->termhash, termhash); // could have changed!
-      termhash_setup(th);
-      RELAY_ERROR(termhash_bump_size(th));
+      RELAY_ERROR(termhash_bump_size(MMAP_OBJ(s->termhash, termhash)));
       *success = 1;
     }
   }

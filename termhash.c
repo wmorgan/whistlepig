@@ -30,28 +30,20 @@ static int term_equals(term a, term b) {
   return a.word_s == b.word_s && a.field_s == b.field_s;
 }
 
+#define TERMHASH_FLAGS(h) ((uint32_t*)(h)->boundary)
+#define TERMHASH_KEYS(h) ((term*)((uint32_t*)(h)->boundary + (((h)->n_buckets >> 4) + 1)))
+#define TERMHASH_VALS(h) ((uint32_t*)(TERMHASH_KEYS(h) + (h)->n_buckets))
+
 void termhash_init(termhash* h) {
   h->n_buckets_idx = 1;
   h->n_buckets = prime_list[h->n_buckets_idx];
   h->upper_bound = (uint32_t)(h->n_buckets * HASH_UPPER + 0.5);
   h->size = h->n_occupied = 0;
-  termhash_setup(h);
-  memset(h->flags, 0xaa, ((h->n_buckets>>4) + 1) * sizeof(uint32_t));
+  memset(TERMHASH_FLAGS(h), 0xaa, ((h->n_buckets>>4) + 1) * sizeof(uint32_t));
 }
 
 #define OFFSET(a, b) (long)((uint8_t*)a - (uint8_t*)b)
 // set flags, keys and vals to correct locations based on h->n_buckets
-void termhash_setup(termhash* h) {
-  DEBUG("term hash ranges from %p to %p (size %u)", h, (char*)h + termhash_size(h), termhash_size(h));
-  DEBUG("boundary is at %p (+%ld)", h->boundary, OFFSET(h->boundary, h));
-  h->flags = (uint32_t*)h->boundary;
-  h->keys = (term*)((uint32_t*)h->boundary + ((h->n_buckets >> 4) + 1));
-  h->vals = (uint32_t*)((term*)h->keys + h->n_buckets);
-  DEBUG("flags are at %p (+%ld)", h->flags, OFFSET(h->flags, h->boundary));
-  DEBUG(" keys are at %p (+%ld)", h->keys, OFFSET(h->keys, h->boundary));
-  DEBUG(" vals are at %p (+%ld)", h->vals, OFFSET(h->vals, h->boundary));
-}
-
 /*
 static void termhash_dump(termhash* h) {
   for(uint32_t i = 0; i < h->n_buckets; i++) {
@@ -83,16 +75,19 @@ static void kh_clear_##name(kh_##name##_t *h) {
 */
 
 uint32_t termhash_get(termhash *h, term key) {
+  uint32_t* flags = TERMHASH_FLAGS(h);
+  term* keys = TERMHASH_KEYS(h);
+
   if(h->n_buckets) {
     uint32_t inc, k, i, last;
     k = hash_term(key); i = k % h->n_buckets;
     inc = 1 + k % (h->n_buckets - 1); last = i;
-    while (!isempty(h->flags, i) && (isdel(h->flags, i) || !term_equals(h->keys[i], key))) {
+    while (!isempty(flags, i) && (isdel(flags, i) || !term_equals(keys[i], key))) {
       if (i + inc >= h->n_buckets) i = i + inc - h->n_buckets;
       else i += inc;
       if (i == last) return h->n_buckets;
     }
-    return iseither(h->flags, i)? h->n_buckets : i;
+    return iseither(flags, i)? h->n_buckets : i;
   }
   else return 0;
 }
@@ -103,61 +98,63 @@ wp_error* termhash_bump_size(termhash *h) {
   DEBUG(" keys are at %p (+%ld)", h->keys, OFFSET(h->keys, h->boundary));
   DEBUG(" vals are at %p (+%ld)", h->vals, OFFSET(h->vals, h->boundary));
 
+  if(h->n_buckets_idx >= (HASH_PRIME_SIZE - 1)) RAISE_ERROR("termhash can't be this big");
+
   h->n_buckets_idx++;
-  if(h->n_buckets_idx > HASH_PRIME_SIZE) exit(1); // die horribly TODO fixme
   uint32_t new_n_buckets = prime_list[h->n_buckets_idx];
 
-  // first make a backup of the oldflags
-  size_t oldflagsize = ((h->n_buckets >> 4) + 1) * sizeof(uint32_t);
-  uint32_t* oldflags = malloc(oldflagsize);
-  memcpy(oldflags, h->flags, oldflagsize);
+  // first make a backup of the old flags in a separate memory region
+  size_t flagbaksize = ((h->n_buckets >> 4) + 1) * sizeof(uint32_t);
+  uint32_t* flagbaks = malloc(flagbaksize);
+  memcpy(flagbaks, TERMHASH_FLAGS(h), flagbaksize);
 
-  // keep pointers to the old locations
-  term* oldkeys = h->keys;
-  uint32_t* oldvals = h->vals;
+  // get pointers to the old locations
+  term* oldkeys = TERMHASH_KEYS(h);
+  uint32_t* oldvals = TERMHASH_VALS(h);
 
   // set pointers to the new locations
-  h->keys = (term*)((uint32_t*)h->boundary + ((new_n_buckets >> 4) + 1));
-  h->vals = (uint32_t*)((term*)h->keys + new_n_buckets);
+  uint32_t* newflags = (uint32_t*)h->boundary;
+  term* newkeys = (term*)(newflags + ((new_n_buckets >> 4) + 1));
+  uint32_t* newvals = (uint32_t*)(newkeys + new_n_buckets);
 
   // move the vals and keys
-  memmove(h->vals, oldvals, h->n_buckets * sizeof(uint32_t));
-  memmove(h->keys, oldkeys, h->n_buckets * sizeof(term));
+  memmove(newvals, oldvals, h->n_buckets * sizeof(uint32_t));
+  memmove(newkeys, oldkeys, h->n_buckets * sizeof(term));
 
   // clear the new flags
-  memset(h->flags, 0xaa, ((new_n_buckets>>4) + 1) * sizeof(uint32_t));
+  memset(newflags, 0xaa, ((new_n_buckets>>4) + 1) * sizeof(uint32_t));
 
   // do the complicated stuff from khash.h
   for (unsigned int j = 0; j != h->n_buckets; ++j) {
-    if (iseither(oldflags, j) == 0) {
-      term key = h->keys[j];
+    if (iseither(flagbaks, j) == 0) {
+      term key = newkeys[j];
       uint32_t val;
-      val = h->vals[j];
-      set_isdel_true(oldflags, j);
+      val = newvals[j];
+      set_isdel_true(flagbaks, j);
       while (1) {
         uint32_t inc, k, i;
         k = hash_term(key);
         i = k % new_n_buckets;
         inc = 1 + k % (new_n_buckets - 1);
-        while (!isempty(h->flags, i)) {
+        while (!isempty(newflags, i)) {
           if (i + inc >= new_n_buckets) i = i + inc - new_n_buckets;
           else i += inc;
         }
-        set_isempty_false(h->flags, i);
-        if (i < h->n_buckets && iseither(oldflags, i) == 0) {
-          { term tmp = h->keys[i]; h->keys[i] = key; key = tmp; }
-          { uint32_t tmp = h->vals[i]; h->vals[i] = val; val = tmp; }
-          set_isdel_true(oldflags, i);
+        set_isempty_false(newflags, i);
+        if (i < h->n_buckets && iseither(flagbaks, i) == 0) {
+          { term tmp = newkeys[i]; newkeys[i] = key; key = tmp; }
+          { uint32_t tmp = newvals[i]; newvals[i] = val; val = tmp; }
+          set_isdel_true(flagbaks, i);
         } else {
-          h->keys[i] = key;
-          h->vals[i] = val;
+          newkeys[i] = key;
+          newvals[i] = val;
           break;
         }
       }
     }
   }
 
-  free(oldflags);
+  free(flagbaks);
   h->n_buckets = new_n_buckets;
   h->n_occupied = h->size;
   h->upper_bound = (uint32_t)(h->n_buckets * HASH_UPPER + 0.5);
@@ -177,6 +174,8 @@ wp_error* termhash_bump_size(termhash *h) {
 
 uint32_t termhash_put(termhash *h, term key, int *ret) {
   uint32_t x;
+  uint32_t* flags = TERMHASH_FLAGS(h);
+  term* keys = TERMHASH_KEYS(h);
 
   {
 #ifdef DEBUGOUTPUT
@@ -185,40 +184,40 @@ int num_loops = 0;
     uint32_t inc, k, i, site, last;
     x = site = h->n_buckets; k = hash_term(key); i = k % h->n_buckets;
     DEBUG("initial hash is %u", k);
-    if (isempty(h->flags, i)) x = i;
+    if (isempty(flags, i)) x = i;
     else {
       inc = 1 + k % (h->n_buckets - 1); last = i;
-      while (!isempty(h->flags, i) && (isdel(h->flags, i) || !term_equals(h->keys[i], key))) {
+      while (!isempty(flags, i) && (isdel(flags, i) || !term_equals(keys[i], key))) {
 #ifdef DEBUGOUTPUT
 num_loops++;
 #endif
-        if (isdel(h->flags, i)) site = i;
+        if (isdel(flags, i)) site = i;
         if (i + inc >= h->n_buckets) i = i + inc - h->n_buckets;
         else i += inc;
         if (i == last) { x = site; break; }
       }
       if ((x == h->n_buckets) && (i == last)) { // out of space
-        if(!term_equals(h->keys[i], key)) {
+        if(!term_equals(keys[i], key)) {
           *ret = -1;
           return x;
         }
       }
       if (x == h->n_buckets) { // didn't find it on the first try
-        if (isempty(h->flags, i) && site != h->n_buckets) x = site;
+        if (isempty(flags, i) && site != h->n_buckets) x = site;
         else x = i;
       }
     }
     DEBUG("looped %u times to put", num_loops);
     //DEBUG("x is %u, site is %u, n_buckets is %u", x, site, h->n_buckets);
   }
-  if (isempty(h->flags, x)) {
-    h->keys[x] = key;
-    set_isboth_false(h->flags, x);
+  if (isempty(flags, x)) {
+    keys[x] = key;
+    set_isboth_false(flags, x);
     ++h->size; ++h->n_occupied;
     *ret = 1;
-  } else if (isdel(h->flags, x)) {
-    h->keys[x] = key;
-    set_isboth_false(h->flags, x);
+  } else if (isdel(flags, x)) {
+    keys[x] = key;
+    set_isboth_false(flags, x);
     ++h->size;
     *ret = 2;
   }
@@ -233,24 +232,27 @@ num_loops++;
 }
 
 void termhash_del(termhash *h, uint32_t x) {
-  if (x != h->n_buckets && !iseither(h->flags, x)) {
-    set_isdel_true(h->flags, x);
+  uint32_t* flags = TERMHASH_FLAGS(h);
+  if (x != h->n_buckets && !iseither(flags, x)) {
+    set_isdel_true(flags, x);
     --h->size;
   }
 }
 
 uint32_t termhash_get_val(termhash* h, term t) {
+  uint32_t* vals = TERMHASH_VALS(h);
   uint32_t idx = termhash_get(h, t);
   if(idx == h->n_buckets) return (uint32_t)-1;
-  return h->vals[idx];
+  return vals[idx];
 }
 
 wp_error* termhash_put_val(termhash* h, term t, uint32_t val) {
   int status;
+  uint32_t* vals = TERMHASH_VALS(h);
   uint32_t loc = termhash_put(h, t, &status);
   DEBUG("put(%u,%u) has status %d and loc %u (error val is %u)", t.field_s, t.word_s, status, loc, h->n_buckets);
   if(status == -1) RAISE_ERROR("out of space in hash");
-  h->vals[loc] = val;
+  vals[loc] = val;
   return NO_ERROR;
 }
 
