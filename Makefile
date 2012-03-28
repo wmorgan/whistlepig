@@ -104,6 +104,9 @@ termhash.o: termhash.c whistlepig.h defaults.h index.h segment.h \
 test-labels.o: test-labels.c test.h query.h segment.h defaults.h \
  stringmap.h stringpool.h error.h termhash.h search.h mmap-obj.h \
  query-parser.h index.h entry.h khash.h
+test-queries.o: test-queries.c test.h query.h segment.h defaults.h \
+ stringmap.h stringpool.h error.h termhash.h search.h mmap-obj.h \
+ query-parser.h
 test-search.o: test-search.c test.h query.h segment.h defaults.h \
  stringmap.h stringpool.h error.h termhash.h search.h mmap-obj.h \
  query-parser.h index.h entry.h khash.h
