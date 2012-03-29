@@ -58,8 +58,9 @@ wp_error* mmap_obj_reload(mmap_obj* o) {
     uint32_t new_size = o->content->size + (uint32_t)sizeof(mmap_obj_header);
     if(munmap(o->content, sizeof(mmap_obj_header) + o->loaded_size) == -1) RAISE_SYSERROR("munmap");
     o->content = mmap(NULL, new_size, PROT_READ | PROT_WRITE, MAP_SHARED, o->fd, 0);
-    if(o->content == MAP_FAILED) RAISE_SYSERROR("mmap");
-    DEBUG("loaded %u bytes after reload. header is at %p", o->content->size, o->content);
+    if(o->content == MAP_FAILED) RAISE_SYSERROR("mmap of %uk", new_size / 1024);
+    o->loaded_size = o->content->size;
+    DEBUG("loaded %u bytes for %s. header is at %p", o->content->size, o->content->magic, o->content);
   }
 
   return NO_ERROR;
