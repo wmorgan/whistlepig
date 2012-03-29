@@ -18,31 +18,74 @@ static void postings_region_init(postings_region* pr, uint32_t initial_size, uin
   pr->postings_tail = initial_size;
 }
 
-RAISING_STATIC(segment_info_init(segment_info* si, uint32_t index_version)) {
-  si->index_version = index_version;
-  si->num_docs = 0;
-
+RAISING_STATIC(setup_lock(pthread_rwlock_t* lock)) {
   pthread_rwlockattr_t attr;
   if(pthread_rwlockattr_init(&attr) != 0) RAISE_ERROR("cannot initialize pthreads rwlockattr");
   if(pthread_rwlockattr_setpshared(&attr, PTHREAD_PROCESS_SHARED) != 0) RAISE_ERROR("cannot set pthreads rwlockattr to PTHREAD_PROCESS_SHARED");
-  if(pthread_rwlock_init(&si->lock, &attr) != 0) RAISE_ERROR("cannot initialize pthreads rwlock");
+  if(pthread_rwlock_init(lock, &attr) != 0) RAISE_ERROR("cannot initialize pthreads rwlock");
 
   return NO_ERROR;
 }
 
+RAISING_STATIC(segment_info_init(segment_info* si, uint32_t index_version)) {
+  si->index_version = index_version;
+  si->num_docs = 0;
+
+  RELAY_ERROR(setup_lock(&si->lock));
+  return NO_ERROR;
+}
 
 #define WP_SEGMENT_LOCK_READLOCK 0
 #define WP_SEGMENT_LOCK_WRITELOCK 1
+
+/*
+
+alernative implementation that uses rdlock. doesn't allow us to detect
+and break stale locks, but gives us a good sense of what the timing should
+be like.
+
+wp_error* wp_segment_grab_lock2(wp_segment* seg, int lock_type) {
+  segment_info* si = MMAP_OBJ(seg->seginfo, segment_info);
+  const char* lock_name = (lock_type == WP_SEGMENT_LOCK_READLOCK ? "read" : "write");
+  DEBUG("grabbing %slock for segment %p", lock_name, seg);
+
+  struct timespec start, end;
+  clock_gettime(CLOCK_MONOTONIC, &start);
+
+  int ret = 0;
+  switch(lock_type) {
+    case WP_SEGMENT_LOCK_READLOCK: ret = pthread_rwlock_rdlock(&si->lock); break;
+    case WP_SEGMENT_LOCK_WRITELOCK: ret = pthread_rwlock_wrlock(&si->lock); break;
+  }
+
+  if(ret != 0) RAISE_SYSERROR("grabbing %slock", lock_name);
+
+  clock_gettime(CLOCK_MONOTONIC, &end);
+
+
+  uint64_t diff_in_ns = ((end.tv_sec * 1000000000) + end.tv_nsec) -
+             ((start.tv_sec * 1000000000) + start.tv_nsec);
+
+  uint32_t total_delay_ms = diff_in_ns / 1000000;
+  if(total_delay_ms > 0) printf("XXX acquired %slock for segment %p after %ums\n", lock_name, seg, total_delay_ms);
+
+  return NO_ERROR;
+}
+*/
+
+// we will wait this many milliseconds before assuming the lock
+// is stale and breaking it.
+#define LOCK_STALE_TIME_MS 2500
 
 wp_error* wp_segment_grab_lock(wp_segment* seg, int lock_type) {
   segment_info* si = MMAP_OBJ(seg->seginfo, segment_info);
   const char* lock_name = (lock_type == WP_SEGMENT_LOCK_READLOCK ? "read" : "write");
   DEBUG("grabbing %slock for segment %p", lock_name, seg);
 
-  unsigned int delay = 1000;
-  uint32_t total_delay = 0;
-  int acquired = 0;
-  while(!acquired) {
+  unsigned int delay_ms = 1;
+  uint32_t total_delay_ms = 0;
+
+  while(1) {
     int ret;
 
     switch(lock_type) {
@@ -50,22 +93,21 @@ wp_error* wp_segment_grab_lock(wp_segment* seg, int lock_type) {
       case WP_SEGMENT_LOCK_WRITELOCK: ret = pthread_rwlock_trywrlock(&si->lock); break;
     }
 
-    switch(ret) {
-      case 0: acquired = 1; break;
-      case EBUSY:
-        delay *= 2;
-        if(delay >= 1000000) RAISE_ERROR("timeout acquiring %slock: %ums", lock_name, total_delay);
-        break;
-      default: RAISE_SYSERROR("acquiring %slock", lock_name);
-    }
+    if(ret == 0) break; // acquired!
+    if(ret != EBUSY) RAISE_SYSERROR("acquiring %slock", lock_name);
 
-    if(!acquired) {
-      usleep(delay);
-      total_delay += (delay / 1000);
+    if(total_delay_ms >= LOCK_STALE_TIME_MS) {
+      //RAISE_ERROR("timeout acquiring %slock: %ums", lock_name, total_delay_ms);
+      DEBUG("assuming lock is stale and breaking it!");
+      RELAY_ERROR(setup_lock(&si->lock));
     }
+    if(delay_ms > 1000) sleep(delay_ms / 1000);
+    usleep(1000 * (delay_ms % 1000));
+    total_delay_ms += delay_ms;
+    //delay_ms *= 2;
   }
 
-  DEBUG("acquired %slock for segment %p after %ums", lock_name, seg, total_delay);
+  if(total_delay_ms > 0) DEBUG(":( acquired %slock for segment %p after %ums\n", lock_name, seg, total_delay_ms);
   return NO_ERROR;
 }
 
