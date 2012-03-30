@@ -30,7 +30,7 @@ static khash_t(offsets)* load_offsets(const char* base_path) {
 
   khash_t(offsets)* h = kh_init(offsets);
 
-  docid_t doc_id;
+  uint64_t doc_id;
   while(!feof(f)) {
     offset o;
 
@@ -47,7 +47,7 @@ static khash_t(offsets)* load_offsets(const char* base_path) {
     else break;
   }
 
-  printf("loaded %d offsets from %s. last was %u\n", kh_size(h), path, doc_id);
+  printf("loaded %d offsets from %s. last was %"PRIu64"\n", kh_size(h), path, doc_id);
 
   return h;
 }
