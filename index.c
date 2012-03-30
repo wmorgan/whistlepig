@@ -197,7 +197,7 @@ wp_error* wp_index_add_entry(wp_index* index, wp_entry* entry, uint64_t* doc_id)
     index->num_segments++;
 
     // set the docid_offset
-    segment_info* prevsi = MMAP_OBJ(index->segments[index->num_segments - 1].seginfo, segment_info);
+    segment_info* prevsi = MMAP_OBJ(index->segments[index->num_segments - 2].seginfo, segment_info);
     index->docid_offsets[index->num_segments - 1] = prevsi->num_docs + index->docid_offsets[index->num_segments - 2];
 
     seg = &index->segments[index->num_segments - 1];
