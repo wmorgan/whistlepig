@@ -62,7 +62,7 @@ typedef struct label_posting {
 // terms also; see termhash.h.)
 
 #define MAX_LOGICAL_DOCID 2147483646 // don't tweak me
-#define MAX_POSTINGS_REGION_SIZE (512*1024*1024) // tweak me
+#define MAX_POSTINGS_REGION_SIZE (256*1024*1024) // tweak me
 
 #define WP_SEGMENT_POSTING_REGION_PATH_SUFFIX "pr"
 
