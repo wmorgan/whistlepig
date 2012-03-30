@@ -1,9 +1,9 @@
 = Whistlepig
 
-Whistlepig is a minimalist realtime full-text search index. Its goal is to be
-as small and feature-free as possible, while still remaining useful, performant
-and scalable to large corpora. If you want realtime full-text search without
-the frills, Whistlepig may be for you.
+Whistlepig is a minimalist realtime full-text search index. Its goal is
+to be as small and maintainable as possible, while still remaining
+useful, performant and scalable to large corpora. If you want realtime
+full-text search without the frills, Whistlepig may be for you.
 
 Whistlepig is written in ANSI C99. It currently provides a C API and Ruby
 bindings.
@@ -27,7 +27,7 @@ Roughly speaking, realtime search means:
   reindexing or index merging;
 - later documents are more important than earlier documents.
 
-Whistlepig takes these principles to an extreme.
+Whistlepig takes these principles at face value.
 - It only returns documents in the reverse (LIFO) order to which they were
   added, and performs no ranking, reordering, or scoring.
 - It only supports incremental indexing. There is no notion of batch indexing
@@ -46,6 +46,15 @@ Features that Whistlepig does provide:
   at any point, and incorporated into search queries.
 - Early query termination and resumable queries.
 - A tiny, < 3 KLOC ANSI C99 implementation.
+
+== Benchmarks
+
+On my not-particularly-new Linux desktop, I can index 8.5 MB/s of text
+data, including some minor parsing.
+
+The entire Enron corpus (http://cs.cmu.edu/~enron/), which is roughly
+1.4GB in uncompressed mbox form, takes 2m30s to index. The resulting
+index size is 753mb.
 
 == Synopsis (using Ruby bindings)
 
@@ -83,11 +92,25 @@ Features that Whistlepig does provide:
   q4 = Query.new "body", "subject:know hello"
   results4 = index.search q4                   # => [3]
 
-== A note on concurrency:
+== Concurrency
 
-Whistlepig is currently single-process and single-thread only. However, it is
-built with multi-process access in mind. Per-segment single-writer,
-multi-reader support is planned in the near future. Multi-writer support can be
-accomplished via index striping and may be attempted in the distant future.
+Whistlepig supports multi-process concurrency. Multiple readers and
+multiple writers can access the same index concurrently. Whistlepig
+uses pthread read-write locks to synchronize between readers and
+writers, which allows multiple concurrent readers but only a single
+writer. Systems with high write loads may benefit from sharding
+documents against independent indexes.
 
-Please send bug reports and comments to: wmorgan-whistlepig-readme@masanjin.net.
+== Design tradeoffs
+
+I have generally erred on the side of maintainable code, at the expense
+of speed. Simpler implementations have been preferred over more complex,
+faster versions. If you ever have to modify Whistlepig to suit your
+needs, you will appreciate this.
+
+== Bug reports
+
+Please file bugs here: https://github.com/wmorgan/whistlepig/issues
+Please send comments to: wmorgan-whistlepig-readme@masanjin.net.
+
+
