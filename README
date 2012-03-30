@@ -50,11 +50,13 @@ Features that Whistlepig does provide:
 == Benchmarks
 
 On my not-particularly-new Linux desktop, I can index 8.5 MB/s of text
-data, including some minor parsing.
+data per process, including some minor parsing.
 
-The entire Enron corpus (http://cs.cmu.edu/~enron/), which is roughly
-1.4GB in uncompressed mbox form, takes 2m30s to index. The resulting
-index size is 753mb.
+Index sizes are roughly 50% of the original corpus size, e.g. the 1.4gb
+Enron email corpus (http://cs.cmu.edu/~enron/) is 753mb in the index.
+
+Query performance is entirely dependent on the queries and the index
+size. Run the benchmark-queries to see some examples.
 
 == Synopsis (using Ruby bindings)
 
