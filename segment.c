@@ -334,7 +334,7 @@ RAISING_STATIC(postings_region_ensure_fit(mmap_obj* mmopr, uint32_t postings_byt
   uint32_t new_tail = pr->postings_tail;
   while(new_tail <= new_head) new_tail = new_tail * 2;
 
-  if(new_tail > MAX_POSTINGS_REGION_SIZE) new_tail = MAX_POSTINGS_REGION_SIZE;
+  if(new_tail > MAX_POSTINGS_REGION_SIZE - sizeof(mmap_obj_header)) new_tail = MAX_POSTINGS_REGION_SIZE - sizeof(mmap_obj_header);
   DEBUG("new tail will be %u, current is %u, max is %u", new_tail, pr->postings_tail, MAX_POSTINGS_REGION_SIZE);
 
   if(new_tail <= new_head) { // can't increase enough
