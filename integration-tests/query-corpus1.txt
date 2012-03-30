@@ -1,0 +1,17 @@
+"happy b-day"
+"happy b-day" chicago
+"happy b-day" -phone
+"happy b-day" "email me your phone"
+pate
+pate "college station"
+pate -tx
+"last day with"
+"last day with" enrq
+"last day with" "the risk team"
+"last day with" enrq OR "the risk team"
+"last day with" enrq OR "the risk team" OR trophy
+"last day with" enrq OR "the risk team" OR fdsafdasdfa
+asdlfj
+"lease violation"
+"lease violation" OR "lady gaga"
+"lease violation" -"complaining about"

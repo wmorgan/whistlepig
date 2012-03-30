@@ -36,7 +36,7 @@ DUMPBIN=dump
 ADDBIN=add
 MBOXADDBIN=addmbox
 TESTBIN = $(TESTFILES:.c=)
-ALLBIN=$(QUERYBIN) $(DUMPBIN) $(ADDBIN) $(MBOXADDBIN) batch-run-queries
+ALLBIN=$(QUERYBIN) $(DUMPBIN) $(ADDBIN) $(MBOXADDBIN) batch-run-queries benchmark-queries
 
 all: $(ALLBIN)
 
@@ -48,6 +48,9 @@ loc: $(CSRCFILES) $(LEXFILES) $(YFILES) $(HEADERFILES)
 
 ## deps (use `make dep` to generate this (in vi: :r !make dep)
 batch-run-queries.o: batch-run-queries.c whistlepig.h defaults.h index.h \
+ segment.h stringmap.h stringpool.h error.h termhash.h query.h search.h \
+ mmap-obj.h entry.h khash.h query-parser.h timer.h
+benchmark-queries.o: benchmark-queries.c whistlepig.h defaults.h index.h \
  segment.h stringmap.h stringpool.h error.h termhash.h query.h search.h \
  mmap-obj.h entry.h khash.h query-parser.h timer.h
 dump.o: dump.c whistlepig.h defaults.h index.h segment.h stringmap.h \
@@ -122,6 +125,10 @@ test-tokenizer.o: test-tokenizer.c test.h tokenizer.lex.h segment.h \
  mmap-obj.h
 tokenizer.lex.o: tokenizer.lex.c segment.h defaults.h stringmap.h \
  stringpool.h error.h termhash.h query.h search.h mmap-obj.h
+
+benchmark-queries: benchmark-queries.o $(OBJ)
+	@$(ECHO) LINK $@
+	@$(CC) -o $@ $(CCOPT) $(DEBUG) $+
 
 batch-run-queries: batch-run-queries.o $(OBJ)
 	@$(ECHO) LINK $@

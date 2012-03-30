@@ -26,3 +26,4 @@ integration-tests/enron1m.index*
 ruby/pkg/
 ruby/README
 ruby/COPYING
+benchmark-queries
