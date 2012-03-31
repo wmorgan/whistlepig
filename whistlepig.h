@@ -10,6 +10,7 @@
 #include "index.h"
 #include "query.h"
 #include "query-parser.h"
+#include "lock.h"
 #include "error.h"
 
 // see comments in index.c
