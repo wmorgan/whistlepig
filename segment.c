@@ -75,7 +75,7 @@ wp_error* wp_segment_load(wp_segment* segment, const char* pathname_base) {
   RELAY_ERROR(mmap_obj_load(&segment->stringpool, "wp/stringpool", fn));
 
   // open the string hash
-  snprintf(fn, 128, "%s.sh_", pathname_base);
+  snprintf(fn, 128, "%s.sh", pathname_base);
   RELAY_ERROR(mmap_obj_load(&segment->stringmap, "wp/stringmap", fn));
 
   // open the term hash
@@ -120,7 +120,7 @@ wp_error* wp_segment_create(wp_segment* segment, const char* pathname_base) {
   stringpool_init(MMAP_OBJ(segment->stringpool, stringpool));
 
   // create the string hash
-  snprintf(fn, 128, "%s.sh_", pathname_base);
+  snprintf(fn, 128, "%s.sh", pathname_base);
   RELAY_ERROR(mmap_obj_create(&segment->stringmap, "wp/stringmap", fn, stringmap_initial_size()));
   stringmap_init(MMAP_OBJ(segment->stringmap, stringmap));
 
@@ -159,7 +159,7 @@ wp_error* wp_segment_delete(const char* pathname_base) {
   unlink(fn);
   snprintf(fn, 128, "%s.sp", pathname_base);
   unlink(fn);
-  snprintf(fn, 128, "%s.sh_", pathname_base);
+  snprintf(fn, 128, "%s.sh", pathname_base);
   unlink(fn);
   snprintf(fn, 128, "%s.th", pathname_base);
   unlink(fn);
