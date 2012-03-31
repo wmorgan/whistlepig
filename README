@@ -97,15 +97,18 @@ size. Run the benchmark-queries to see some examples.
 == Concurrency
 
 Whistlepig supports multi-process concurrency. Multiple readers and
-multiple writers can access the same index concurrently. Whistlepig
-uses pthread read-write locks to synchronize between readers and
-writers, which allows multiple concurrent readers but only a single
-writer. Systems with high write loads may benefit from sharding
-documents against independent indexes.
+multiple writers can access the same index without mangling data.
+Whistlepig uses pthread read-write locks to synchronize between readers
+and writers, which allows multiple concurrent readers but only a single
+writer.
+
+This locking approach necessarily decreases both read and write
+performance when one or more writers exist. Systems with high write
+loads may benefit from sharding documents against independent indexes.
 
 == Design tradeoffs
 
-I have generally erred on the side of maintainable code, at the expense
+I have generally erred on the side of maintainable code at the expense
 of speed. Simpler implementations have been preferred over more complex,
 faster versions. If you ever have to modify Whistlepig to suit your
 needs, you will appreciate this.
@@ -114,5 +117,4 @@ needs, you will appreciate this.
 
 Please file bugs here: https://github.com/wmorgan/whistlepig/issues
 Please send comments to: wmorgan-whistlepig-readme@masanjin.net.
-
 
