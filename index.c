@@ -125,7 +125,7 @@ wp_error* wp_index_run_query(wp_index* index, wp_query* query, uint32_t max_num_
     RELAY_ERROR(wp_segment_grab_readlock(seg));
     RELAY_ERROR(wp_segment_reload(seg));
     RELAY_ERROR(wp_search_init_search_state(query, seg));
-    RELAY_ERROR(wp_segment_release_readlock(seg));
+    RELAY_ERROR(wp_segment_release_lock(seg));
   }
 
   // at this point, we assume we're initialized and query->segment_idx is the index
@@ -140,7 +140,7 @@ wp_error* wp_index_run_query(wp_index* index, wp_query* query, uint32_t max_num_
     RELAY_ERROR(wp_segment_grab_readlock(seg));
     RELAY_ERROR(wp_segment_reload(seg));
     RELAY_ERROR(wp_search_run_query_on_segment(query, seg, want_num_results, &got_num_results, segment_results));
-    RELAY_ERROR(wp_segment_release_readlock(seg));
+    RELAY_ERROR(wp_segment_release_lock(seg));
     DEBUG("asked segment %d for %d results, got %d", query->segment_idx, want_num_results, got_num_results);
 
     // extract the per-segment docids from the search results and adjust by
@@ -228,11 +228,13 @@ wp_error* wp_index_add_entry(wp_index* index, wp_entry* entry, uint64_t* doc_id)
     if(!success) RAISE_ERROR("can't fit new entry into fresh segment. that's crazy");
   }
 
+  //RELAY_ERROR(release_lock(index)); // release full-index lock
+
   docid_t seg_doc_id;
   RELAY_ERROR(wp_segment_grab_writelock(seg));
   RELAY_ERROR(wp_segment_grab_docid(seg, &seg_doc_id));
   RELAY_ERROR(wp_entry_write_to_segment(entry, seg, seg_doc_id));
-  RELAY_ERROR(wp_segment_release_writelock(seg));
+  RELAY_ERROR(wp_segment_release_lock(seg));
   *doc_id = seg_doc_id + index->docid_offsets[index->num_segments - 1];
 
   return NO_ERROR;
@@ -262,7 +264,7 @@ wp_error* wp_index_dumpinfo(wp_index* index, FILE* stream) {
     RELAY_ERROR(wp_segment_grab_readlock(seg));
     RELAY_ERROR(wp_segment_reload(seg));
     RELAY_ERROR(wp_segment_dumpinfo(seg, stream));
-    RELAY_ERROR(wp_segment_release_readlock(seg));
+    RELAY_ERROR(wp_segment_release_lock(seg));
   }
 
   return NO_ERROR;
@@ -298,7 +300,7 @@ wp_error* wp_index_add_label(wp_index* index, const char* label, uint64_t doc_id
       DEBUG("found doc %llu in segment %u", doc_id, i - 1);
       RELAY_ERROR(wp_segment_grab_writelock(seg));
       RELAY_ERROR(wp_segment_add_label(seg, label, (docid_t)(doc_id - index->docid_offsets[i - 1])));
-      RELAY_ERROR(wp_segment_release_writelock(seg));
+      RELAY_ERROR(wp_segment_release_lock(seg));
       found = 1;
       break;
     }
@@ -320,7 +322,7 @@ wp_error* wp_index_remove_label(wp_index* index, const char* label, uint64_t doc
       DEBUG("found doc %llu in segment %u", doc_id, i - 1);
       RELAY_ERROR(wp_segment_grab_writelock(seg));
       RELAY_ERROR(wp_segment_remove_label(seg, label, (docid_t)(doc_id - index->docid_offsets[i - 1])));
-      RELAY_ERROR(wp_segment_release_writelock(seg));
+      RELAY_ERROR(wp_segment_release_lock(seg));
       found = 1;
       break;
     }
@@ -341,7 +343,7 @@ wp_error* wp_index_num_docs(wp_index* index, uint64_t* num_docs) {
     RELAY_ERROR(wp_segment_grab_readlock(seg));
     RELAY_ERROR(wp_segment_reload(seg));
     *num_docs += wp_segment_num_docs(seg);
-    RELAY_ERROR(wp_segment_release_readlock(seg));
+    RELAY_ERROR(wp_segment_release_lock(seg));
   }
 
   return NO_ERROR;

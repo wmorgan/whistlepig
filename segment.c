@@ -22,13 +22,7 @@ wp_error* wp_segment_grab_writelock(wp_segment* seg) {
   return NO_ERROR;
 }
 
-wp_error* wp_segment_release_readlock(wp_segment* seg) {
-  segment_info* si = MMAP_OBJ(seg->seginfo, segment_info);
-  RELAY_ERROR(wp_lock_release(&si->lock));
-  return NO_ERROR;
-}
-
-wp_error* wp_segment_release_writelock(wp_segment* seg) {
+wp_error* wp_segment_release_lock(wp_segment* seg) {
   segment_info* si = MMAP_OBJ(seg->seginfo, segment_info);
   RELAY_ERROR(wp_lock_release(&si->lock));
   return NO_ERROR;

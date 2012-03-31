@@ -115,9 +115,8 @@ wp_error* wp_segment_delete(const char* pathname_base) RAISES_ERROR;
 
 // public: lock grabbing and releasing
 wp_error* wp_segment_grab_readlock(wp_segment* seg) RAISES_ERROR;
-wp_error* wp_segment_release_readlock(wp_segment* seg) RAISES_ERROR;
 wp_error* wp_segment_grab_writelock(wp_segment* seg) RAISES_ERROR;
-wp_error* wp_segment_release_writelock(wp_segment* seg) RAISES_ERROR;
+wp_error* wp_segment_release_lock(wp_segment* seg) RAISES_ERROR;
 
 // private: read a posting from the postings region at a given offset
 wp_error* wp_segment_read_posting(wp_segment* s, uint32_t offset, posting* po, int include_positions) RAISES_ERROR;
