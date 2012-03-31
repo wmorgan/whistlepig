@@ -9,6 +9,8 @@
 // essentially relays commands to the appropriate ones, creating new segments
 // as needed.
 
+#include <pthread.h>
+
 #include "defaults.h"
 #include "segment.h"
 #include "error.h"
@@ -16,13 +18,20 @@
 
 #define WP_MAX_SEGMENTS 65534 // max value of wp_search_query->segment_idx - 2 because we need two special numbers
 
+typedef struct index_info {
+  uint32_t index_version;
+  uint32_t num_segments;
+  pthread_rwlock_t lock;
+} index_info;
+
 typedef struct wp_index {
   const char* pathname_base;
   uint16_t num_segments;
   uint16_t sizeof_segments;
   uint64_t* docid_offsets;
-  struct wp_segment* segments;
+  wp_segment* segments;
   uint8_t open;
+  mmap_obj indexinfo;
 } wp_index;
 
 // API methods

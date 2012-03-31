@@ -6,6 +6,7 @@
 #include "whistlepig.h"
 
 #define PATH_BUF_SIZE 4096
+#define INDEX_VERSION 1
 
 int wp_index_exists(const char* pathname_base) {
   char buf[PATH_BUF_SIZE];
@@ -13,22 +14,40 @@ int wp_index_exists(const char* pathname_base) {
   return wp_segment_exists(buf);
 }
 
+RAISING_STATIC(index_info_init(index_info* ii, uint32_t index_version)) {
+  ii->index_version = index_version;
+  ii->num_segments = 0;
+
+  RELAY_ERROR(wp_lock_setup(&ii->lock));
+  return NO_ERROR;
+}
+
+RAISING_STATIC(index_info_validate(index_info* ii, uint32_t index_version)) {
+  if(ii->index_version != index_version) RAISE_ERROR("index has type %u; expecting type %u", ii->index_version, index_version);
+  return NO_ERROR;
+}
+
 wp_error* wp_index_create(wp_index** indexptr, const char* pathname_base) {
   char buf[PATH_BUF_SIZE];
 
-  snprintf(buf, PATH_BUF_SIZE, "%s0", pathname_base);
-  if(wp_segment_exists(buf)) RAISE_ERROR("index with base path '%s' already exists", pathname_base);
-
   wp_index* index = *indexptr = malloc(sizeof(wp_index));
+  snprintf(buf, PATH_BUF_SIZE, "%s.ii", pathname_base);
+  RELAY_ERROR(mmap_obj_create(&index->indexinfo, "wp/indexinfo", buf, sizeof(index_info)));
+  RELAY_ERROR(index_info_init(MMAP_OBJ(index->indexinfo, index_info), INDEX_VERSION));
+
   index->pathname_base = pathname_base;
-  index->num_segments = 1;
   index->sizeof_segments = 1;
   index->open = 1;
   index->segments = malloc(sizeof(wp_segment));
   index->docid_offsets = malloc(sizeof(uint64_t));
 
+  snprintf(buf, PATH_BUF_SIZE, "%s0", pathname_base);
   RELAY_ERROR(wp_segment_create(&index->segments[0], buf));
   index->docid_offsets[0] = 0;
+  index->num_segments = 1;
+
+  index_info* ii = MMAP_OBJ(index->indexinfo, index_info);
+  ii->num_segments = 1;
 
   return NO_ERROR;
 }
@@ -46,36 +65,37 @@ RAISING_STATIC(ensure_num_segments(wp_index* index)) {
 
 wp_error* wp_index_load(wp_index** indexptr, const char* pathname_base) {
   char buf[PATH_BUF_SIZE];
-  snprintf(buf, PATH_BUF_SIZE, "%s0", pathname_base);
-  if(!wp_segment_exists(buf)) RAISE_ERROR("index with base path '%s' does not exist", pathname_base);
 
   wp_index* index = *indexptr = malloc(sizeof(wp_index));
+  snprintf(buf, PATH_BUF_SIZE, "%s.ii", pathname_base);
+  RELAY_ERROR(mmap_obj_load(&index->indexinfo, "wp/indexinfo", buf));
+  RELAY_ERROR(index_info_validate(MMAP_OBJ(index->indexinfo, index_info), INDEX_VERSION));
+
+  index_info* ii = MMAP_OBJ(index->indexinfo, index_info);
 
   index->pathname_base = pathname_base;
-  index->num_segments = 0;
-  index->sizeof_segments = 1;
   index->open = 1;
-  index->segments = malloc(sizeof(wp_segment));
+  index->num_segments = ii->num_segments;
+  index->sizeof_segments = ii->num_segments;
+  index->segments = calloc(ii->num_segments, sizeof(wp_segment));
   index->docid_offsets = malloc(sizeof(uint64_t));
 
   // load all the segments we can
-  while(index->num_segments < WP_MAX_SEGMENTS) {
-    snprintf(buf, PATH_BUF_SIZE, "%s%d", pathname_base, index->num_segments);
-    if(!wp_segment_exists(buf)) break;
+  for(int i = 0; i < index->num_segments; i++) {
+    snprintf(buf, PATH_BUF_SIZE, "%s%d", pathname_base, i);
+    if(!wp_segment_exists(buf)) RAISE_ERROR("cannot load segment %s", buf);
 
     RELAY_ERROR(ensure_num_segments(index));
     DEBUG("loading segment %s", buf);
-    RELAY_ERROR(wp_segment_load(&index->segments[index->num_segments], buf));
-    if(index->num_segments == 0)
-      index->docid_offsets[index->num_segments] = 0;
+    RELAY_ERROR(wp_segment_load(&index->segments[i], buf));
+    if(i == 0)
+      index->docid_offsets[i] = 0;
     else {
       // segments return docids 1 through N, so the num_docs in a segment is
       // also the max document id
-      segment_info* prevsi = MMAP_OBJ(index->segments[index->num_segments - 1].seginfo, segment_info);
-      index->docid_offsets[index->num_segments] = prevsi->num_docs + index->docid_offsets[index->num_segments - 1];
+      segment_info* prevsi = MMAP_OBJ(index->segments[i - 1].seginfo, segment_info);
+      index->docid_offsets[i] = prevsi->num_docs + index->docid_offsets[i - 1];
     }
-
-    index->num_segments++;
   }
 
   return NO_ERROR;
@@ -261,6 +281,9 @@ wp_error* wp_index_delete(const char* pathname_base) {
     }
     else break;
   }
+
+  snprintf(buf, PATH_BUF_SIZE, "%s.ii", pathname_base);
+  unlink(buf);
 
   return NO_ERROR;
 }
