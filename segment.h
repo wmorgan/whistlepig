@@ -75,7 +75,7 @@ typedef struct postings_region {
 } postings_region;
 
 typedef struct segment_info {
-  uint32_t index_version;
+  uint32_t segment_version;
   uint32_t num_docs;
   pthread_rwlock_t lock;
 } segment_info;
