@@ -143,7 +143,11 @@ static VALUE index_delete(VALUE class, VALUE v_pathname_base) {
 static VALUE index_size(VALUE self) {
   wp_index* index;
   Data_Get_Struct(self, wp_index, index);
-  return INT2NUM(wp_index_num_docs(index));
+
+  uint64_t num_docs;
+  wp_error* e = wp_index_num_docs(index, &num_docs);
+  RAISE_IF_NECESSARY(e);
+  return INT2NUM(num_docs);
 }
 
 static VALUE index_init(VALUE self, VALUE v_pathname_base) {
