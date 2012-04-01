@@ -8,7 +8,7 @@ full-text search without the frills, Whistlepig may be for you.
 Whistlepig is written in ANSI C99. It currently provides a C API and Ruby
 bindings.
 
-Latest version: 0.9.1, released 2012-03-14.
+Latest version: 0.10, released 2012-04-01.
         Status: beta
           News: http://all-thing.net/label/whistlepig/
       Homepage: http://masanjin.net/whistlepig/
