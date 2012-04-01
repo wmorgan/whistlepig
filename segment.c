@@ -408,7 +408,7 @@ wp_error* wp_segment_read_posting(wp_segment* s, uint32_t offset, posting* po, i
 
   RELAY_ERROR(read_multibyte(&pr->postings[offset], &po->next_offset, &size));
   //DEBUG("read next_offset %u -> %u (%u bytes)", po->next_offset, orig_offset - po->next_offset, size);
-  if((po->next_offset == 0) || (po->next_offset > orig_offset)) RAISE_ERROR("read invalid next_offset %u (must be > 0 and < %u", po->next_offset, orig_offset);
+  if((po->next_offset == 0) || (po->next_offset > orig_offset)) RAISE_ERROR("read invalid next_offset %u (must be > 0 and < %u)", po->next_offset, orig_offset);
   po->next_offset = orig_offset - po->next_offset;
   offset += size;
 
