@@ -35,7 +35,8 @@ int main(int argc, char* argv[]) {
     return -1;
   }
 
-  DIE_IF_ERROR(wp_index_create(&idx, argv[1]));
+  if(wp_index_exists(argv[1])) DIE_IF_ERROR(wp_index_load(&idx, argv[1]));
+  else DIE_IF_ERROR(wp_index_create(&idx, argv[1]));
 
   printf("starting...\n");
   unsigned long total_bytes = 0;
