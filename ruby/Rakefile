@@ -4,7 +4,7 @@ require 'rubygems/package_task'
 spec = Gem::Specification.new do |s|
  s.name = "whistlepig"
  s.version = "0.10"
- s.date = Time.now.to_s
+ s.date = Time.now
  s.email = "wmorgan-whistlepig-gemspec@masanjin.net"
  s.authors = ["William Morgan"]
  s.summary = "a minimalist realtime full-text search index"
