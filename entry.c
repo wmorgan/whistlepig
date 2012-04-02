@@ -93,9 +93,7 @@ RAISING_STATIC(add_from_lexer(wp_entry* entry, yyscan_t* scanner, const char* fi
 
   do {
     token_type = yylex(*scanner);
-    if(token_type == TOK_WORD) {
-      RELAY_ERROR(add_token(entry, field, yyget_text(*scanner), field_len, yyget_leng(*scanner)));
-    }
+    RELAY_ERROR(add_token(entry, field, yyget_text(*scanner), field_len, yyget_leng(*scanner)));
   } while(token_type != TOK_DONE);
 
   return NO_ERROR;
