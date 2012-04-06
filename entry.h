@@ -13,12 +13,7 @@
 #include "error.h"
 #include "segment.h"
 #include "khash.h"
-
-typedef struct posarray {
-  uint32_t size;
-  uint32_t next;
-  pos_t* data;
-} posarray;
+#include "rarray.h"
 
 typedef struct fielded_term {
   char* field;
@@ -28,7 +23,8 @@ typedef struct fielded_term {
 khint_t fielded_term_hash(fielded_term ft);
 khint_t fielded_term_equals(fielded_term a, fielded_term b);
 
-KHASH_INIT(entries, fielded_term, posarray*, 1, fielded_term_hash, fielded_term_equals);
+RARRAY_DECLARE(pos_t);
+KHASH_INIT(entries, fielded_term, RARRAY(pos_t), 1, fielded_term_hash, fielded_term_equals);
 
 typedef struct wp_entry {
   khash_t(entries)* entries;

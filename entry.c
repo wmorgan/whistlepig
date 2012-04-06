@@ -1,29 +1,6 @@
 #include "whistlepig.h"
 #include "tokenizer.lex.h"
 
-static posarray* posarray_new(pos_t i) {
-  posarray* ret = malloc(sizeof(posarray));
-  ret->data = malloc(sizeof(pos_t));
-  ret->data[0] = i;
-  ret->size = ret->next = 1;
-  return ret;
-}
-
-static void posarray_free(posarray* p) {
-  free(p->data);
-  free(p);
-}
-
-static void posarray_add(posarray* p, pos_t a) {
-  while(p->next >= p->size) {
-    p->size *= 2;
-    p->data = realloc(p->data, p->size * sizeof(pos_t));
-  }
-  p->data[p->next++] = a;
-}
-
-static inline pos_t posarray_get(posarray* p, int i) { return p->data[i]; }
-
 static inline khint_t khash_hash_string(const char *s) {
   khint_t h = *s;
   if (h) for (++s ; *s; ++s) h = (h << 5) - h + *s;
@@ -59,10 +36,13 @@ RAISING_STATIC(add_token(wp_entry* entry, const char* field, const char* term, s
 
   khiter_t k = kh_put(entries, entry->entries, ft, &status);
   if(status == 1) { // not found
-    kh_value(entry->entries, k) = posarray_new(entry->next_offset);
+    RARRAY(pos_t) pa;
+    RARRAY_INIT(pos_t, pa);
+    RARRAY_ADD(pos_t, pa, entry->next_offset);
+    kh_value(entry->entries, k) = pa;
   }
   else { // just add the next offset to the array
-    posarray_add(kh_value(entry->entries, k), entry->next_offset);
+    RARRAY_ADD(pos_t, kh_value(entry->entries, k), entry->next_offset);
 
     // don't need these guys any more
     free(ft.field);
@@ -79,8 +59,8 @@ uint32_t wp_entry_size(wp_entry* entry) {
 
   for(khiter_t i = kh_begin(entry->entries); i < kh_end(entry->entries); i++) {
     if(kh_exist(entry->entries, i)) {
-      posarray* positions = kh_val(entry->entries, i);
-      ret += positions->next;
+      RARRAY(pos_t) positions = kh_val(entry->entries, i);
+      ret += RARRAY_NELEM(positions);
     }
   }
 
@@ -136,8 +116,8 @@ wp_error* wp_entry_write_to_segment(wp_entry* entry, wp_segment* seg, docid_t do
   for(khiter_t i = kh_begin(entry->entries); i < kh_end(entry->entries); i++) {
     if(kh_exist(entry->entries, i)) {
       fielded_term ft = kh_key(entry->entries, i);
-      posarray* positions = kh_val(entry->entries, i);
-      RELAY_ERROR(wp_segment_add_posting(seg, ft.field, ft.term, doc_id, positions->next, positions->data));
+      RARRAY(pos_t) positions = kh_val(entry->entries, i);
+      RELAY_ERROR(wp_segment_add_posting(seg, ft.field, ft.term, doc_id, RARRAY_NELEM(positions), RARRAY_ALL(positions)));
     }
   }
 
@@ -150,10 +130,10 @@ wp_error* wp_entry_sizeof_postings_region(wp_entry* entry, wp_segment* seg, uint
   *size = 0;
   for(khiter_t i = kh_begin(entry->entries); i < kh_end(entry->entries); i++) {
     if(kh_exist(entry->entries, i)) {
-      posarray* positions = kh_val(entry->entries, i);
+      RARRAY(pos_t) positions = kh_val(entry->entries, i);
 
       uint32_t this_size;
-      RELAY_ERROR(wp_segment_sizeof_posarray(seg, positions->next, positions->data, &this_size));
+      RELAY_ERROR(wp_segment_sizeof_posarray(seg, RARRAY_NELEM(positions), RARRAY_ALL(positions), &this_size));
       *size += this_size;
     }
   }
@@ -165,10 +145,10 @@ wp_error* wp_entry_free(wp_entry* entry) {
   for(khiter_t k = kh_begin(entry->entries); k < kh_end(entry->entries); k++) {
     if(kh_exist(entry->entries, k)) {
       fielded_term ft = kh_key(entry->entries, k);
-      posarray* positions = kh_val(entry->entries, k);
+      RARRAY(pos_t) positions = kh_val(entry->entries, k);
       free(ft.term);
       free(ft.field);
-      posarray_free(positions);
+      RARRAY_FREE(pos_t, positions);
     }
   }
 
