@@ -1,5 +1,5 @@
-#ifndef wp_lock_h_
-#define wp_lock_h_
+#ifndef WP_LOCK_H_
+#define WP_LOCK_H_
 
 // whistlepig locks
 // (c) 2011 william morgan. see copying for license terms.
