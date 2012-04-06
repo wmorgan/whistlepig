@@ -23,8 +23,8 @@ CCLINK?= -pthread
 CCOPT= $(CFLAGS) $(CCLINK) $(ARCH) $(PROF)
 DEBUG?= -rdynamic -ggdb
 
-TESTFILES = test-segment.c test-stringmap.c test-stringpool.c test-termhash.c test-search.c test-labels.c test-tokenizer.c test-queries.c
-CSRCFILES = segment.c termhash.c stringmap.c error.c query.c search.c stringpool.c mmap-obj.c query-parser.c index.c entry.c lock.c
+TESTFILES = test-segment.c test-stringmap.c test-stringpool.c test-termhash.c test-search.c test-labels.c test-tokenizer.c test-queries.c test-snippets.c
+CSRCFILES = segment.c termhash.c stringmap.c error.c query.c search.c stringpool.c mmap-obj.c query-parser.c index.c entry.c lock.c snippeter.c
 HEADERFILES = $(CSRCFILES:.c=.h) defaults.h whistlepig.h khash.h
 LEXFILES = tokenizer.lex query-parser.lex
 YFILES = query-parser.y
@@ -49,68 +49,72 @@ loc: $(CSRCFILES) $(LEXFILES) $(YFILES) $(HEADERFILES)
 ## deps (use `make dep` to generate this (in vi: :r !make dep)
 batch-run-queries.o: batch-run-queries.c whistlepig.h defaults.h index.h \
  segment.h stringmap.h stringpool.h error.h termhash.h query.h search.h \
- mmap-obj.h entry.h khash.h rarray.h query-parser.h lock.h timer.h
+ mmap-obj.h entry.h khash.h rarray.h query-parser.h lock.h snippeter.h \
+ timer.h
 benchmark-queries.o: benchmark-queries.c whistlepig.h defaults.h index.h \
  segment.h stringmap.h stringpool.h error.h termhash.h query.h search.h \
- mmap-obj.h entry.h khash.h rarray.h query-parser.h lock.h timer.h
+ mmap-obj.h entry.h khash.h rarray.h query-parser.h lock.h snippeter.h \
+ timer.h
 dump.o: dump.c whistlepig.h defaults.h index.h segment.h stringmap.h \
  stringpool.h error.h termhash.h query.h search.h mmap-obj.h entry.h \
- khash.h rarray.h query-parser.h lock.h
+ khash.h rarray.h query-parser.h lock.h snippeter.h
 entry.o: entry.c whistlepig.h defaults.h index.h segment.h stringmap.h \
  stringpool.h error.h termhash.h query.h search.h mmap-obj.h entry.h \
- khash.h rarray.h query-parser.h lock.h tokenizer.lex.h
+ khash.h rarray.h query-parser.h lock.h snippeter.h tokenizer.lex.h
 error.o: error.c error.h
 file-indexer.o: file-indexer.c timer.h whistlepig.h defaults.h index.h \
  segment.h stringmap.h stringpool.h error.h termhash.h query.h search.h \
- mmap-obj.h entry.h khash.h rarray.h query-parser.h lock.h
+ mmap-obj.h entry.h khash.h rarray.h query-parser.h lock.h snippeter.h
 index.o: index.c whistlepig.h defaults.h index.h segment.h stringmap.h \
  stringpool.h error.h termhash.h query.h search.h mmap-obj.h entry.h \
- khash.h rarray.h query-parser.h lock.h
+ khash.h rarray.h query-parser.h lock.h snippeter.h
 interactive.o: interactive.c whistlepig.h defaults.h index.h segment.h \
  stringmap.h stringpool.h error.h termhash.h query.h search.h mmap-obj.h \
- entry.h khash.h rarray.h query-parser.h lock.h timer.h
+ entry.h khash.h rarray.h query-parser.h lock.h snippeter.h timer.h
 lock.o: lock.c whistlepig.h defaults.h index.h segment.h stringmap.h \
  stringpool.h error.h termhash.h query.h search.h mmap-obj.h entry.h \
- khash.h rarray.h query-parser.h lock.h
+ khash.h rarray.h query-parser.h lock.h snippeter.h
 make-queries.o: make-queries.c tokenizer.lex.h segment.h defaults.h \
  stringmap.h stringpool.h error.h termhash.h query.h search.h mmap-obj.h
 mbox-indexer.o: mbox-indexer.c whistlepig.h defaults.h index.h segment.h \
  stringmap.h stringpool.h error.h termhash.h query.h search.h mmap-obj.h \
- entry.h khash.h rarray.h query-parser.h lock.h timer.h
+ entry.h khash.h rarray.h query-parser.h lock.h snippeter.h timer.h
 mmap-obj.o: mmap-obj.c whistlepig.h defaults.h index.h segment.h \
  stringmap.h stringpool.h error.h termhash.h query.h search.h mmap-obj.h \
- entry.h khash.h rarray.h query-parser.h lock.h
+ entry.h khash.h rarray.h query-parser.h lock.h snippeter.h
 query-parser.o: query-parser.c whistlepig.h defaults.h index.h segment.h \
  stringmap.h stringpool.h error.h termhash.h query.h search.h mmap-obj.h \
- entry.h khash.h rarray.h query-parser.h lock.h query-parser.tab.h
+ entry.h khash.h rarray.h query-parser.h lock.h snippeter.h \
+ query-parser.tab.h
 query-parser.lex.o: query-parser.lex.c whistlepig.h defaults.h index.h \
  segment.h stringmap.h stringpool.h error.h termhash.h query.h search.h \
- mmap-obj.h entry.h khash.h rarray.h query-parser.h lock.h \
+ mmap-obj.h entry.h khash.h rarray.h query-parser.h lock.h snippeter.h \
  query-parser.tab.h
 query-parser.tab.o: query-parser.tab.c query.h segment.h defaults.h \
  stringmap.h stringpool.h error.h termhash.h search.h mmap-obj.h \
  query-parser.h query-parser.tab.h
 query.o: query.c whistlepig.h defaults.h index.h segment.h stringmap.h \
  stringpool.h error.h termhash.h query.h search.h mmap-obj.h entry.h \
- khash.h rarray.h query-parser.h lock.h
+ khash.h rarray.h query-parser.h lock.h snippeter.h
 search.o: search.c whistlepig.h defaults.h index.h segment.h stringmap.h \
  stringpool.h error.h termhash.h query.h search.h mmap-obj.h entry.h \
- khash.h rarray.h query-parser.h lock.h
+ khash.h rarray.h query-parser.h lock.h snippeter.h
 segment.o: segment.c whistlepig.h defaults.h index.h segment.h \
  stringmap.h stringpool.h error.h termhash.h query.h search.h mmap-obj.h \
- entry.h khash.h rarray.h query-parser.h lock.h
+ entry.h khash.h rarray.h query-parser.h lock.h snippeter.h
 snippeter.o: snippeter.c whistlepig.h defaults.h index.h segment.h \
  stringmap.h stringpool.h error.h termhash.h query.h search.h mmap-obj.h \
- entry.h khash.h rarray.h query-parser.h lock.h tokenizer.lex.h
+ entry.h khash.h rarray.h query-parser.h lock.h snippeter.h \
+ tokenizer.lex.h
 stringmap.o: stringmap.c whistlepig.h defaults.h index.h segment.h \
  stringmap.h stringpool.h error.h termhash.h query.h search.h mmap-obj.h \
- entry.h khash.h rarray.h query-parser.h lock.h
+ entry.h khash.h rarray.h query-parser.h lock.h snippeter.h
 stringpool.o: stringpool.c whistlepig.h defaults.h index.h segment.h \
  stringmap.h stringpool.h error.h termhash.h query.h search.h mmap-obj.h \
- entry.h khash.h rarray.h query-parser.h lock.h
+ entry.h khash.h rarray.h query-parser.h lock.h snippeter.h
 termhash.o: termhash.c whistlepig.h defaults.h index.h segment.h \
  stringmap.h stringpool.h error.h termhash.h query.h search.h mmap-obj.h \
- entry.h khash.h rarray.h query-parser.h lock.h
+ entry.h khash.h rarray.h query-parser.h lock.h snippeter.h
 test-labels.o: test-labels.c test.h query.h segment.h defaults.h \
  stringmap.h stringpool.h error.h termhash.h search.h mmap-obj.h \
  query-parser.h index.h entry.h khash.h rarray.h
@@ -127,6 +131,9 @@ test-segment.o: test-segment.c test.h segment.h defaults.h stringmap.h \
  stringpool.h error.h termhash.h query.h search.h mmap-obj.h \
  tokenizer.lex.h index.h entry.h khash.h rarray.h
 test-segment_main.o: test-segment_main.c error.h test.h
+test-snippets.o: test-snippets.c test.h whistlepig.h defaults.h index.h \
+ segment.h stringmap.h stringpool.h error.h termhash.h query.h search.h \
+ mmap-obj.h entry.h khash.h rarray.h query-parser.h lock.h snippeter.h
 test-stringmap.o: test-stringmap.c stringmap.h stringpool.h error.h \
  test.h
 test-stringpool.o: test-stringpool.c stringpool.h error.h test.h
@@ -188,11 +195,11 @@ query-parser.lex.o: query-parser.lex.c
 
 %.lex.c %.lex.h: %.lex
 	@$(ECHO) LEX $+
-	@$(LEX) $<
+	$(LEX) $<
 
 %.tab.c %.tab.h: %.y
 	@$(ECHO) YACC $+
-	@$(YACC) $<
+	$(YACC) $<
 
 clean:
 	rm -rf $(TESTBIN) *.o *.gcda *.gcno *.gcov $(GENFILES) $(ALLBIN)
@@ -208,6 +215,7 @@ test: $(TESTBIN)
 	./test-search
 	./test-labels
 	./test-queries
+	./test-snippets
 
 integration-tests/enron1m.index0.pr: integration-tests/enron1m.mbox $(MBOXADDBIN) $(OBJ)
 	rm -f integration-tests/enron1m.index*
