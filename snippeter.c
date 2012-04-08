@@ -2,7 +2,7 @@
 #include "tokenizer.lex.h"
 
 typedef struct pword {
-  const char* token;
+  char* token;
   pos_t start;
   pos_t end;
 } pword;
@@ -92,6 +92,8 @@ RAISING_STATIC(snippetize_from_lexer(wp_query* query, lexinfo* charpos, yyscan_t
   }
 
   RELAY_ERROR(snippetize_query(query, field, words, max_num_results, num_results, start_offsets, end_offsets));
+  for(uint32_t i = 0; i < RARRAY_NELEM(words); i++) free(RARRAY_GET(words, i).token);
+  RARRAY_FREE(pword, words);
 
   return NO_ERROR;
 }
