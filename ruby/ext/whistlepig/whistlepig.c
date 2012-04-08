@@ -447,6 +447,44 @@ static VALUE query_or(VALUE self, VALUE v_other) {
   return o_result;
 }
 
+/*
+ * call-seq: snippetize(field, string, max_num_results=10)
+ *
+ * Returns an array of [start, end] subarrays that mark the matching positions of
+ * the query within the string. 'field' determines which field the string is
+ * taken to be.
+ *
+ */
+static VALUE query_snippetize(int argc, VALUE* argv, VALUE self) {
+  VALUE v_field, v_string, v_max_num_results;
+  rb_scan_args(argc, argv, "21", &v_field, &v_string, &v_max_num_results);
+  Check_Type(v_string, T_STRING);
+
+  wp_query* query; Data_Get_Struct(self, wp_query, query);
+  uint32_t num_results, max_num_results;
+  if(NIL_P(v_max_num_results)) max_num_results = 10;
+  else max_num_results = NUM2INT(v_max_num_results);
+
+  uint32_t* start_offsets = malloc(sizeof(uint32_t) * max_num_results);
+  uint32_t* end_offsets = malloc(sizeof(uint32_t) * max_num_results);
+
+  wp_error* e = wp_snippetize_string(query, RSTRING_PTR(v_field), RSTRING_PTR(v_string), max_num_results, &num_results, start_offsets, end_offsets);
+  RAISE_IF_NECESSARY(e);
+
+  VALUE array = rb_ary_new2(num_results);
+  for(uint32_t i = 0; i < num_results; i++) {
+    VALUE subarray = rb_ary_new2(2);
+    rb_ary_store(subarray, 0, INT2NUM(start_offsets[i]));
+    rb_ary_store(subarray, 1, INT2NUM(end_offsets[i]));
+    rb_ary_store(array, i, subarray);
+  }
+
+  free(start_offsets);
+  free(end_offsets);
+
+  return array;
+}
+
 static VALUE query_init(VALUE self, VALUE query) {
   rb_iv_set(self, "@query", query);
   return self;
@@ -568,6 +606,7 @@ void Init_whistlepig() {
   rb_define_method(c_query, "to_s", query_to_s, 0);
   rb_define_method(c_query, "clone", query_clone, 0);
   rb_define_method(c_query, "term_map", query_map_terms, 0);
+  rb_define_method(c_query, "snippetize", query_snippetize, -1);
   rb_define_attr(c_query, "query", 1, 0);
 
   c_error = rb_define_class_under(m_whistlepig, "Error", rb_eStandardError);

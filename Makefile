@@ -25,7 +25,7 @@ DEBUG?= -rdynamic -ggdb
 
 TESTFILES = test-segment.c test-stringmap.c test-stringpool.c test-termhash.c test-search.c test-labels.c test-tokenizer.c test-queries.c test-snippets.c
 CSRCFILES = segment.c termhash.c stringmap.c error.c query.c search.c stringpool.c mmap-obj.c query-parser.c index.c entry.c lock.c snippeter.c
-HEADERFILES = $(CSRCFILES:.c=.h) defaults.h whistlepig.h khash.h
+HEADERFILES = $(CSRCFILES:.c=.h) defaults.h whistlepig.h khash.h rarray.h
 LEXFILES = tokenizer.lex query-parser.lex
 YFILES = query-parser.y
 GENFILES = $(LEXFILES:.lex=.lex.c) $(LEXFILES:.lex=.lex.h) $(YFILES:.y=.tab.c) $(YFILES:.y=.tab.h)
