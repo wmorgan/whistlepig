@@ -56,7 +56,7 @@ RAISING_STATIC(dump(wp_segment* segment)) {
 
   uint32_t* thflags = TERMHASH_FLAGS(th);
   term* thkeys = TERMHASH_KEYS(th);
-  uint32_t* thvals = TERMHASH_FLAGS(th);
+  uint32_t* thvals = TERMHASH_VALS(th);
 
   for(uint32_t i = 0; i < th->n_buckets; i++) {
     if(isempty(thflags, i)); // do nothing
