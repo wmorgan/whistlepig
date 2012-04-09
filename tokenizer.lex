@@ -16,7 +16,7 @@
 %option extra-type="struct lexinfo*"
 
 FIRSTWORDCHAR [^[:blank:][:punct:]<>\r\n]
-INNERWORDCHAR [^[:blank:]<>]
+INNERWORDCHAR [^[:blank:]<>\r\n]
 LASTWORDCHAR  [^[:blank:][:punct:]<>\r\n]
 
 %%
