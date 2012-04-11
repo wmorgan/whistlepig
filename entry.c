@@ -67,14 +67,16 @@ uint32_t wp_entry_size(wp_entry* entry) {
   return ret;
 }
 
+#define MAX_TOKEN_LENGTH 50
+
 RAISING_STATIC(add_from_lexer(wp_entry* entry, yyscan_t* scanner, const char* field)) {
-  int token_type;
   size_t field_len = strlen(field);
 
-  do {
-    token_type = yylex(*scanner);
-    RELAY_ERROR(add_token(entry, field, yyget_text(*scanner), field_len, yyget_leng(*scanner)));
-  } while(token_type != TOK_DONE);
+  while(yylex(*scanner) != TOK_DONE) {
+    if(yyget_leng(*scanner) <= MAX_TOKEN_LENGTH) {
+      RELAY_ERROR(add_token(entry, field, yyget_text(*scanner), field_len, yyget_leng(*scanner)));
+    }
+  }
 
   return NO_ERROR;
 }
