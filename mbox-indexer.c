@@ -69,8 +69,10 @@ int main(int argc, char* argv[]) {
       total_bytes += len;
       chunk_bytes += len;
 
-      if(!strncmp(buf, "From ", 5)) break;
-      if(strchr(buf, ' ') == NULL) continue; // hack -- skip non-text, e.g. MIME attachment blocks
+      if(!strncmp(buf, "From ", 5)) {
+        fseek(mbox, before_read_pos, SEEK_SET);
+        break;
+      }
 
       make_lowercase(buf, len);
       DIE_IF_ERROR(wp_entry_add_string(entry, "body", buf));
