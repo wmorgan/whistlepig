@@ -1,5 +1,6 @@
 #include <inttypes.h>
 #include <stdio.h>
+#include <ctype.h>
 #include "whistlepig.h"
 #include "timer.h"
 
@@ -8,11 +9,9 @@ typedef struct offset {
   long end_offset;
 } offset;
 
-/*
 static void make_lowercase(char* c, int len) {
   for(int i = 0; i < len; i++) c[i] = tolower(c[i]);
 }
-*/
 
 // map of docids into start/end offsets pairs
 KHASH_MAP_INIT_INT64(offsets, offset);
@@ -53,6 +52,10 @@ static khash_t(offsets)* load_offsets(const char* base_path) {
 }
 
 #define RESULTS_TO_SHOW 3
+#define RESULT_SNIPPETS_TO_SHOW 3
+#define MAX_SNIPPET_DOC_SIZE 64*1024
+#define FIELD_NAME "body"
+#define OFFSET_PADDING 100
 
 int main(int argc, char* argv[]) {
   wp_index* index;
@@ -90,7 +93,7 @@ int main(int argc, char* argv[]) {
 
     //make_lowercase(input, strlen(input));
 
-    HANDLE_ERROR(wp_query_parse(input, "body", &query));
+    HANDLE_ERROR(wp_query_parse(input, FIELD_NAME, &query));
     if(query == NULL) continue;
 
     wp_query_to_s(query, 1024, output);
@@ -120,16 +123,30 @@ int main(int argc, char* argv[]) {
         if(offsets && corpus) {
           khiter_t k = kh_get(offsets, offsets, results[i]);
           if(k != kh_end(offsets)) {
+            char buf[MAX_SNIPPET_DOC_SIZE];
+            uint32_t num_snippets;
+            pos_t start_offsets[RESULT_SNIPPETS_TO_SHOW];
+            pos_t end_offsets[RESULT_SNIPPETS_TO_SHOW];
             offset o;
-            o = kh_value(offsets, k);
 
+            o = kh_value(offsets, k);
             fseek(corpus, o.start_offset, SEEK_SET);
-            long end_offset = o.start_offset + 100;
-            if(o.end_offset < end_offset) end_offset = o.end_offset;
-            while(ftell(corpus) < end_offset) {
-              char buf[1024];
-              if(fgets(buf, 1024, corpus) == NULL) break;
-              printf("| %s", buf);
+            size_t size = o.end_offset - o.start_offset;
+            if(size > MAX_SNIPPET_DOC_SIZE) size = MAX_SNIPPET_DOC_SIZE;
+            size_t len = fread(buf, sizeof(char), size, corpus);
+            buf[len] = '\0';
+            make_lowercase(buf, len);
+            DIE_IF_ERROR(wp_snippetize_string(query, FIELD_NAME, buf, RESULT_SNIPPETS_TO_SHOW, &num_snippets, start_offsets, end_offsets));
+            printf("found %d occurrences within this doc\n", num_snippets);
+            //printf(">> [%s] (%d)\n", buf, len);
+
+            for(uint32_t j = 0; j < num_snippets; j++) {
+              pos_t start = start_offsets[j] < OFFSET_PADDING ? 0 : (start_offsets[j] - OFFSET_PADDING);
+              pos_t end = end_offsets[j] > (len - OFFSET_PADDING) ? len : end_offsets[j] + OFFSET_PADDING;
+              char hack = buf[end];
+              buf[end] = '\0';
+              printf("| %s\n", &buf[start]);
+              buf[end] = hack;
             }
           }
 
