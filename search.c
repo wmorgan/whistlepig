@@ -475,8 +475,8 @@ static wp_error* conj_next_doc(wp_query* q, wp_segment* seg, search_result* resu
 
   while(!found && !*done) {
     RELAY_ERROR(query_next_doc(master, seg, result, done));
-    DEBUG("master reports doc %u done %d", result->doc_id, *done);
     if(!*done) {
+      DEBUG("master reports doc %u done %d", result->doc_id, *done);
       search_doc = result->doc_id;
       wp_search_result_free(result); // sigh
       RELAY_ERROR(conj_advance_to_doc(q, seg, search_doc, result, &found, done));
@@ -564,8 +564,8 @@ static wp_error* phrase_next_doc(wp_query* q, wp_segment* seg, search_result* re
 
   while(!found && !*done) {
     RELAY_ERROR(query_next_doc(master, seg, result, done));
-    DEBUG("master reports doc %u done %d", result->doc_id, *done);
     if(!*done) {
+      DEBUG("master reports doc %u done %d", result->doc_id, *done);
       search_doc = result->doc_id;
       wp_search_result_free(result); // sigh
       RELAY_ERROR(phrase_advance_to_doc(q, seg, search_doc, result, &found, done));
