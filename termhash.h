@@ -22,6 +22,18 @@ typedef struct term {
   uint32_t word_s;
 } term;
 
+typedef struct posting_list_header {
+  uint32_t count;
+  uint32_t next_offset;
+} posting_list_header;
+
+typedef struct block_header {
+  uint32_t max_docid;
+  uint32_t next_offset;
+  uint32_t block_start;
+  uint8_t data[];
+} block_header;
+
 #define INITIAL_N_BUCKETS_IDX 1
 
 typedef struct termhash {
@@ -31,12 +43,12 @@ typedef struct termhash {
   // in memory at this point
   // ((n_buckets >> 4) + 1) uint32_t's for the flags
   // n_buckets terms for the keys
-  // n_buckets uint32_t's for the vals (offsets into postings lists)
+  // n_buckets posting_list_header for the vals
 } termhash;
 
 #define TERMHASH_FLAGS(h) ((uint32_t*)(h)->boundary)
 #define TERMHASH_KEYS(h) ((term*)((uint32_t*)(h)->boundary + (((h)->n_buckets >> 4) + 1)))
-#define TERMHASH_VALS(h) ((uint32_t*)(TERMHASH_KEYS(h) + (h)->n_buckets))
+#define TERMHASH_VALS(h) ((posting_list_header*)(TERMHASH_KEYS(h) + (h)->n_buckets))
 
 // API methods
 
@@ -50,14 +62,14 @@ uint32_t termhash_get(termhash *h, term t);
 
 // public: get an int given a term. returns (uint32_t)-1 if the term is not in
 // the hash.
-uint32_t termhash_get_val(termhash* h, term t); // convenience
+posting_list_header* termhash_get_val(termhash* h, term t); // convenience
 
 // private: khash-style setter: insert a term into the hash. see the code
 // for details on what all the return values mean.
 uint32_t termhash_put(termhash* h, term t, int *ret); // khash-style
 
 // public: adds a term to the hash with the given value
-wp_error* termhash_put_val(termhash* h, term t, uint32_t val) RAISES_ERROR; // convenience
+wp_error* termhash_put_val(termhash* h, term t, posting_list_header* val) RAISES_ERROR; // convenience
 
 // public: returns the byte size of the termhash
 uint32_t termhash_size(termhash* h);

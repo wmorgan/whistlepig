@@ -87,7 +87,7 @@ RAISING_STATIC(snippetize_from_lexer(wp_query* query, lexinfo* charpos, yyscan_t
 
   RARRAY_INIT(pword, words);
   while(yylex(*scanner) != TOK_DONE) {
-    pword pw = { strdup(yyget_text(*scanner)), charpos->start, charpos->end };
+    pword pw = { .token = strdup(yyget_text(*scanner)), .start = charpos->start, .end = charpos->end };
     RARRAY_ADD(pword, words, pw);
   }
 

@@ -5,10 +5,13 @@
 #define isdel(flag, i) ((flag[i>>4]>>((i&0xfU)<<1))&1)
 #define KEY(h, i) &(h->pool[h->keys[i]])
 
-RAISING_STATIC(dump_posting_list(wp_segment* s, uint32_t offset)) {
+RAISING_STATIC(dump_posting_list(wp_segment* s, posting_list_header* plh)) {
   posting po;
   docid_t last_doc_id = 0;
   int started = 0;
+
+  uint32_t offset = plh->next_offset;
+  printf("[%u entries]\n", plh->count);
 
   while(offset != OFFSET_NONE) {
     RELAY_ERROR(wp_segment_read_posting(s, offset, &po, 1));
@@ -28,10 +31,13 @@ RAISING_STATIC(dump_posting_list(wp_segment* s, uint32_t offset)) {
   return NO_ERROR;
 }
 
-RAISING_STATIC(dump_label_posting_list(wp_segment* s, uint32_t offset)) {
+RAISING_STATIC(dump_label_posting_list(wp_segment* s, posting_list_header* plh)) {
   posting po;
   docid_t last_doc_id = 0;
   int started = 0;
+
+  uint32_t offset = plh->next_offset;
+  printf("[%u entries]\n", plh->count);
 
   while(offset != OFFSET_NONE) {
     RELAY_ERROR(wp_segment_read_label(s, offset, &po));
@@ -56,7 +62,7 @@ RAISING_STATIC(dump(wp_segment* segment)) {
 
   uint32_t* thflags = TERMHASH_FLAGS(th);
   term* thkeys = TERMHASH_KEYS(th);
-  uint32_t* thvals = TERMHASH_VALS(th);
+  posting_list_header* thvals = TERMHASH_VALS(th);
 
   for(uint32_t i = 0; i < th->n_buckets; i++) {
     if(isempty(thflags, i)); // do nothing
@@ -72,13 +78,13 @@ RAISING_STATIC(dump(wp_segment* segment)) {
           const char* label = stringmap_int_to_string(sh, sp, t.word_s);
           printf("%u: ~%s\n", i, label);
         }
-        RELAY_ERROR(dump_label_posting_list(segment, thvals[i]));
+        RELAY_ERROR(dump_label_posting_list(segment, &thvals[i]));
       }
       else {
         const char* field = stringmap_int_to_string(sh, sp, t.field_s);
         const char* word = stringmap_int_to_string(sh, sp, t.word_s);
         printf("%u: %s:'%s'\n", i, field, word);
-        RELAY_ERROR(dump_posting_list(segment, thvals[i]));
+        RELAY_ERROR(dump_posting_list(segment, &thvals[i]));
       }
     }
   }

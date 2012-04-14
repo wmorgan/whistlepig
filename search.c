@@ -195,8 +195,14 @@ static wp_error* term_init_search_state(wp_query* q, wp_segment* seg) {
 
   t.word_s = stringmap_string_to_int(sh, sp, q->word);
 
-  uint32_t offset = termhash_get_val(th, t);
-  if(offset == (uint32_t)-1) offset = OFFSET_NONE;
+  uint32_t offset;
+  posting_list_header* plh = termhash_get_val(th, t);
+
+  DEBUG("posting list header for %s:%s (-> %u:%u) is %p", q->field, q->word, t.field_s, t.word_s, plh);
+  if(plh == NULL) offset = OFFSET_NONE;
+  else offset = plh->next_offset;
+
+  if(plh) DEBUG("posting list header has count=%u next_offset=%u", plh->count, plh->next_offset);
 
   if(offset == OFFSET_NONE) state->done = 1; // no entry in term hash
   else {
@@ -784,7 +790,6 @@ static wp_error* every_advance_to_doc(wp_query* q, wp_segment* seg, docid_t doc_
 
 wp_error* wp_search_run_query_on_segment(struct wp_query* q, struct wp_segment* s, uint32_t max_num_results, uint32_t* num_results, search_result* results) {
   int done;
-
   *num_results = 0;
 
 #ifdef DEBUG

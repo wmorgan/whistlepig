@@ -3,12 +3,15 @@
 #include <unistd.h>
 #include "whistlepig.h"
 
-#define POSTINGS_REGION_TYPE_IMMUTABLE_VBE   1
+#define POSTINGS_REGION_TYPE_IMMUTABLE_VBE 1
 #define POSTINGS_REGION_TYPE_MUTABLE_NO_POSITIONS 2 // bigger, mutable
 
-#define SEGMENT_VERSION 3
+#define SEGMENT_VERSION 4
 
 #define wp_segment_label_posting_at(posting_region, offset) ((label_posting*)(posting_region->postings + offset))
+
+static posting_list_header blank_plh = { .count = 0, .next_offset = OFFSET_NONE };
+static term dead_term = { .field_s = 0, .word_s = 0 };
 
 wp_error* wp_segment_grab_readlock(wp_segment* seg) {
   segment_info* si = MMAP_OBJ(seg->seginfo, segment_info);
@@ -449,7 +452,7 @@ wp_error* wp_segment_add_posting(wp_segment* s, const char* field, const char* w
   RELAY_ERROR(bump_stringpool(s, &success));
   RELAY_ERROR(bump_termhash(s, &success));
 
-  DEBUG("adding posting for %s:%s and doc %u", field, word, doc_id);
+  DEBUG("adding posting for %s:%s and doc %u with %u positions", field, word, doc_id, num_positions);
 
   postings_region* pr = MMAP_OBJ(s->postings, postings_region);
   stringmap* sh = MMAP_OBJ(s->stringmap, stringmap);
@@ -461,26 +464,38 @@ wp_error* wp_segment_add_posting(wp_segment* s, const char* field, const char* w
   RELAY_ERROR(stringmap_add(sh, sp, field, &t.field_s));
   RELAY_ERROR(stringmap_add(sh, sp, word, &t.word_s));
 
+  DEBUG("%s:%s maps to %u:%u", field, word, t.field_s, t.word_s);
+
   // find the offset of the next posting
+  posting_list_header* plh = termhash_get_val(th, t);
+  if(plh == NULL) {
+    RELAY_ERROR(termhash_put_val(th, t, &blank_plh));
+    plh = termhash_get_val(th, t);
+  }
+  DEBUG("posting list header for %s:%s is at %p", field, word, plh);
+
   posting po;
-  uint32_t next_offset = termhash_get_val(th, t);
-  if(next_offset == (uint32_t)-1) next_offset = OFFSET_NONE;
-  if(next_offset != OFFSET_NONE) { // TODO remove this check for speed once happy
+  uint32_t next_offset = plh->next_offset;
+
+  if(next_offset != OFFSET_NONE) { // TODO remove this check for speed once happy [PERFORMANCE]
     RELAY_ERROR(wp_segment_read_posting(s, next_offset, &po, 0));
     if(po.doc_id >= doc_id) RAISE_ERROR("cannot add a doc_id out of sorted order");
   }
 
   // write the entry to the postings region
   uint32_t entry_offset = pr->postings_head;
-  //DEBUG("entry will be at offset %u, prev offset is %u and next offset is %u", entry_offset, prev_offset, next_offset);
+  DEBUG("writing posting at offset %u. next offset is %u.", entry_offset, next_offset);
+
   po.doc_id = doc_id;
   po.next_offset = next_offset;
   po.num_positions = num_positions;
   RELAY_ERROR(write_posting(s, &po, positions)); // prev_docid is 0 for th
-  DEBUG("postings list head now at %u", pr->postings_head);
+  DEBUG("posting list head now at %u", pr->postings_head);
 
   // really finally, update the tail pointer so that readers can access this posting
-  RELAY_ERROR(termhash_put_val(th, t, entry_offset));
+  plh->count++;
+  plh->next_offset = entry_offset;
+  DEBUG("posting list header for %s:%s now reads count=%u offset=%u", field, word, plh->count, plh->next_offset);
 
   return NO_ERROR;
 }
@@ -537,22 +552,25 @@ wp_error* wp_segment_add_label(wp_segment* s, const char* label, docid_t doc_id)
 
   // find the previous and next label postings, between which we'll insert this
   // posting
-  uint32_t prev_offset = OFFSET_NONE;
-  uint32_t next_offset = termhash_get_val(th, t);
-  docid_t last_docid = DOCID_NONE;
+  posting_list_header* plh = termhash_get_val(th, t);
+  if(plh == NULL) {
+    RELAY_ERROR(termhash_put_val(th, t, &blank_plh));
+    plh = termhash_get_val(th, t);
+  }
 
-  if(next_offset == (uint32_t)-1) next_offset = OFFSET_NONE;
+  uint32_t next_offset = plh->next_offset;
+  docid_t last_docid = DOCID_NONE;
+  uint32_t prev_offset = OFFSET_NONE;
+
   DEBUG("start offset is %u (none is %u)", next_offset, OFFSET_NONE);
 
   while(next_offset != OFFSET_NONE) {
     label_posting* lp = wp_segment_label_posting_at(pr, next_offset);
 
-    if((last_docid != DOCID_NONE) && (lp->doc_id >= last_docid)) {
+    if((last_docid != DOCID_NONE) && (lp->doc_id >= last_docid))
       RAISE_ERROR("whistlepig index corruption! lp %u has docid %u but last docid at lp %u was %u", next_offset, lp->doc_id, prev_offset, last_docid);
-    }
-    else {
+    else
       last_docid = lp->doc_id;
-    }
 
     DEBUG("got doc id %u next_offset %u at offset %u (looking for doc id %u)", lp->doc_id, lp->next_offset, next_offset, doc_id);
     if(lp->doc_id == doc_id) {
@@ -567,18 +585,23 @@ wp_error* wp_segment_add_label(wp_segment* s, const char* label, docid_t doc_id)
   // find a space for the posting by first checking for a free postings in the
   // dead list. the dead list is the list stored under the sentinel term with
   // field 0 and word 0.
-  term dead_term = { .field_s = 0, .word_s = 0 };
+  posting_list_header* dead_plh = termhash_get_val(th, dead_term);
+  if(dead_plh == NULL) {
+    RELAY_ERROR(termhash_put_val(th, dead_term, &blank_plh));
+    dead_plh = termhash_get_val(th, t);
+  }
+
   uint32_t entry_offset;
-  uint32_t dead_offset = termhash_get_val(th, dead_term);
-  if(dead_offset == (uint32_t)-1) dead_offset = OFFSET_NONE;
+  uint32_t dead_offset = dead_plh->next_offset;
 
   if(dead_offset == OFFSET_NONE) { // make a new posting
     entry_offset = pr->postings_head;
   }
   else { // we'll use this one; remove it from the linked list
     DEBUG("offset from dead list is %u, using it for the new posting!", dead_offset);
-    entry_offset = dead_offset;
-    RELAY_ERROR(termhash_put_val(th, dead_term, wp_segment_label_posting_at(pr, dead_offset)->next_offset));
+    entry_offset = dead_plh->next_offset;
+    dead_plh->next_offset = wp_segment_label_posting_at(pr, dead_offset)->next_offset;
+    dead_plh->count--;
   }
 
   // finally, write the entry to the label postings region
@@ -588,11 +611,12 @@ wp_error* wp_segment_add_label(wp_segment* s, const char* label, docid_t doc_id)
   po->next_offset = next_offset;
 
   pr->postings_head += (uint32_t)sizeof(label_posting);
-  DEBUG("label postings list head now at %u", pr->postings_head);
+  DEBUG("label posting list head now at %u", pr->postings_head);
 
   // really finally, update either the previous offset or the tail pointer
   // for this label so that readers can access this posting
-  if(prev_offset == OFFSET_NONE) RELAY_ERROR(termhash_put_val(th, t, entry_offset));
+  plh->count++;
+  if(prev_offset == OFFSET_NONE) plh->next_offset = entry_offset;
   else wp_segment_label_posting_at(pr, prev_offset)->next_offset = entry_offset;
 
   return NO_ERROR;
@@ -615,13 +639,16 @@ wp_error* wp_segment_remove_label(wp_segment* s, const char* label, docid_t doc_
   t.word_s = stringmap_string_to_int(sh, sp, label); // will be -1 if not there
 
   // find the posting and the previous posting in the list, if any
-  uint32_t prev_offset = OFFSET_NONE;
-  uint32_t offset = termhash_get_val(th, t);
   docid_t last_docid = DOCID_NONE;
+  uint32_t prev_offset = OFFSET_NONE;
+  posting_list_header* plh = termhash_get_val(th, t);
+  if(plh == NULL) {
+    DEBUG("no such label %s", label);
+    return NO_ERROR;
+  }
 
-  if(offset == (uint32_t)-1) offset = OFFSET_NONE;
+  uint32_t offset = plh->next_offset;
   label_posting* lp = NULL;
-
   while(offset != OFFSET_NONE) {
     lp = wp_segment_label_posting_at(pr, offset);
 
@@ -646,17 +673,22 @@ wp_error* wp_segment_remove_label(wp_segment* s, const char* label, docid_t doc_
   }
 
   // we've found the posting; now remove it from the list
-  if(prev_offset == OFFSET_NONE) RELAY_ERROR(termhash_put_val(th, t, lp->next_offset));
+  if(prev_offset == OFFSET_NONE) plh->next_offset = lp->next_offset;
   else wp_segment_label_posting_at(pr, prev_offset)->next_offset = lp->next_offset;
+  plh->count--;
 
   // now add it to the dead list for later reclamation
-  term dead_term = { .field_s = 0, .word_s = 0 };
-  uint32_t dead_offset = termhash_get_val(th, dead_term);
-  if(dead_offset == (uint32_t)-1) dead_offset = OFFSET_NONE;
+  posting_list_header* dead_plh = termhash_get_val(th, dead_term);
+  if(dead_plh == NULL) {
+    RELAY_ERROR(termhash_put_val(th, dead_term, &blank_plh));
+    dead_plh = termhash_get_val(th, t);
+  }
 
-  lp->next_offset = dead_offset;
   DEBUG("adding dead label posting %u to head of deadlist with next_offset %u", offset, lp->next_offset);
-  RELAY_ERROR(termhash_put_val(th, dead_term, offset));
+
+  uint32_t dead_offset = dead_plh->next_offset;
+  lp->next_offset = dead_offset;
+  dead_plh->next_offset = offset;
 
   return NO_ERROR;
 }
