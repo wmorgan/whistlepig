@@ -369,7 +369,7 @@ wp_error* wp_index_add_label(wp_index* index, const char* label, uint64_t doc_id
     if(doc_id > index->docid_offsets[i - 1]) {
       wp_segment* seg = &index->segments[i - 1];
 
-      DEBUG("found doc %llu in segment %u", doc_id, i - 1);
+      DEBUG("found doc %"PRIu64" in segment %u", doc_id, i - 1);
       RELAY_ERROR(wp_segment_grab_writelock(seg));
       RELAY_ERROR(wp_segment_reload(seg));
       RELAY_ERROR(wp_segment_add_label(seg, label, (docid_t)(doc_id - index->docid_offsets[i - 1])));
@@ -377,7 +377,7 @@ wp_error* wp_index_add_label(wp_index* index, const char* label, uint64_t doc_id
       found = 1;
       break;
     }
-    else DEBUG("did not find doc %llu in segment %u", doc_id, i - 1);
+    else DEBUG("did not find doc %"PRIu64" in segment %u", doc_id, i - 1);
   }
 
   if(!found) RAISE_ERROR("couldn't find doc id %"PRIu64, doc_id);
@@ -396,7 +396,7 @@ wp_error* wp_index_remove_label(wp_index* index, const char* label, uint64_t doc
     if(doc_id > index->docid_offsets[i - 1]) {
       wp_segment* seg = &index->segments[i - 1];
 
-      DEBUG("found doc %llu in segment %u", doc_id, i - 1);
+      DEBUG("found doc %"PRIu64" in segment %u", doc_id, i - 1);
       RELAY_ERROR(wp_segment_grab_writelock(seg));
       RELAY_ERROR(wp_segment_reload(seg));
       RELAY_ERROR(wp_segment_remove_label(seg, label, (docid_t)(doc_id - index->docid_offsets[i - 1])));
@@ -404,7 +404,7 @@ wp_error* wp_index_remove_label(wp_index* index, const char* label, uint64_t doc
       found = 1;
       break;
     }
-    else DEBUG("did not find doc %llu in segment %u", doc_id, i - 1);
+    else DEBUG("did not find doc %"PRIu64" in segment %u", doc_id, i - 1);
   }
 
   if(!found) RAISE_ERROR("couldn't find doc id %"PRIu64, doc_id);
