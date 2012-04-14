@@ -50,42 +50,42 @@ TEST(added_labels_appear_in_search) {
   RELAY_ERROR(setup(&index));
 
   RUN_QUERY("three");
-  ASSERT(num_results == 3);
+  ASSERT_EQUALS_UINT(3, num_results);
 
   RUN_QUERY("three ~bob");
-  ASSERT(num_results == 0);
-
-  RELAY_ERROR(wp_index_add_label(index, "bob", 1));
-  RUN_QUERY("three ~bob");
-  ASSERT(num_results == 1);
+  ASSERT_EQUALS_UINT(0, num_results);
 
   RELAY_ERROR(wp_index_add_label(index, "bob", 1));
   RUN_QUERY("three ~bob");
-  ASSERT(num_results == 1);
+  ASSERT_EQUALS_UINT(1, num_results);
+
+  RELAY_ERROR(wp_index_add_label(index, "bob", 1));
+  RUN_QUERY("three ~bob");
+  ASSERT_EQUALS_UINT(1, num_results);
 
   RELAY_ERROR(wp_index_add_label(index, "bob", 2));
   RUN_QUERY("three ~bob");
-  ASSERT(num_results == 2);
+  ASSERT_EQUALS_UINT(2, num_results);
 
   RUN_QUERY("four ~bob");
-  ASSERT(num_results == 1);
+  ASSERT_EQUALS_UINT(1, num_results);
 
   // now add some in reverse docid order
   RELAY_ERROR(wp_index_add_label(index, "potato", 3));
   RUN_QUERY("~potato");
-  ASSERT(num_results == 1);
+  ASSERT_EQUALS_UINT(1, num_results);
 
   RELAY_ERROR(wp_index_add_label(index, "potato", 2));
   RELAY_ERROR(wp_index_add_label(index, "potato", 1));
   RUN_QUERY("~potato");
-  ASSERT(num_results == 3);
+  ASSERT_EQUALS_UINT(3, num_results);
 
   RUN_QUERY("~potato ~bob");
-  ASSERT(num_results == 2);
+  ASSERT_EQUALS_UINT(2, num_results);
 
   RUN_QUERY("~potato -~bob");
-  ASSERT(num_results == 1);
-  ASSERT(results[0] == 3);
+  ASSERT_EQUALS_UINT(1, num_results);
+  ASSERT_EQUALS_UINT64(3, results[0]);
 
   RELAY_ERROR(shutdown(index));
   return NO_ERROR;
@@ -100,18 +100,18 @@ TEST(removing_labels_disappear_from_search) {
   RELAY_ERROR(setup(&index));
 
   RUN_QUERY("three");
-  ASSERT(num_results == 3);
+  ASSERT_EQUALS_UINT(3, num_results);
 
   RUN_QUERY("three ~bob");
-  ASSERT(num_results == 0);
+  ASSERT_EQUALS_UINT(0, num_results);
 
   RELAY_ERROR(wp_index_add_label(index, "bob", 1));
   RUN_QUERY("three ~bob");
-  ASSERT(num_results == 1);
+  ASSERT_EQUALS_UINT(1, num_results);
 
   RELAY_ERROR(wp_index_remove_label(index, "bob", 1));
   RUN_QUERY("three ~bob");
-  ASSERT(num_results == 0);
+  ASSERT_EQUALS_UINT(0, num_results);
 
 
   RELAY_ERROR(shutdown(index));
@@ -131,23 +131,23 @@ TEST(adding_and_removing_labels_are_reflected_in_search) {
   RELAY_ERROR(wp_index_add_label(index, "bob", 3));
 
   RUN_QUERY("~bob");
-  ASSERT(num_results == 3);
+  ASSERT_EQUALS_UINT(3, num_results);
 
   RELAY_ERROR(wp_index_remove_label(index, "bob", 2));
   RUN_QUERY("~bob");
-  ASSERT(num_results == 2);
+  ASSERT_EQUALS_UINT(2, num_results);
 
   RELAY_ERROR(wp_index_remove_label(index, "bob", 2));
   RUN_QUERY("~bob");
-  ASSERT(num_results == 2);
+  ASSERT_EQUALS_UINT(2, num_results);
 
   RELAY_ERROR(wp_index_add_label(index, "bob", 3));
   RUN_QUERY("~bob");
-  ASSERT(num_results == 2);
+  ASSERT_EQUALS_UINT(2, num_results);
 
   RELAY_ERROR(wp_index_add_label(index, "bob", 2));
   RUN_QUERY("~bob");
-  ASSERT(num_results == 3);
+  ASSERT_EQUALS_UINT(3, num_results);
 
   RELAY_ERROR(wp_index_add_label(index, "joe", 1));
   RELAY_ERROR(wp_index_add_label(index, "joe", 2));
@@ -176,23 +176,23 @@ TEST(adding_and_removing_labels_are_reflected_in_search) {
   // and dave is on everyone
 
   RUN_QUERY("~dave");
-  ASSERT(num_results == 3);
+  ASSERT_EQUALS_UINT(3, num_results);
 
   RUN_QUERY("~dave ~bob");
-  ASSERT(num_results == 1);
-  ASSERT(results[0] == 2);
+  ASSERT_EQUALS_UINT(1, num_results);
+  ASSERT_EQUALS_UINT64(2, results[0]);
 
   RUN_QUERY("~dave ~joe");
-  ASSERT(num_results == 1);
-  ASSERT(results[0] == 3);
+  ASSERT_EQUALS_UINT(1, num_results);
+  ASSERT_EQUALS_UINT64(3, results[0]);
 
   RUN_QUERY("~joe ~bob ~harry");
-  ASSERT(num_results == 0);
+  ASSERT_EQUALS_UINT(0, num_results);
 
   RUN_QUERY("~dave -~harry");
-  ASSERT(num_results == 2);
-  ASSERT(results[0] == 3);
-  ASSERT(results[1] == 2);
+  ASSERT_EQUALS_UINT(2, num_results);
+  ASSERT_EQUALS_UINT64(3, results[0]);
+  ASSERT_EQUALS_UINT64(2, results[1]);
 
   RELAY_ERROR(shutdown(index));
   return NO_ERROR;

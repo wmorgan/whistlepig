@@ -60,7 +60,7 @@ TEST(stringpool_detects_out_of_room) {
   }
 
   ret = stringpool_add(p, "12345");
-  ASSERT(ret == (uint32_t)-1);
+  ASSERT_EQUALS_UINT((uint32_t)-1, ret);
 
   return NO_ERROR;
 }

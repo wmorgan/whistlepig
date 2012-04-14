@@ -22,7 +22,7 @@ TEST(empty_queries) {
 
   RELAY_ERROR(wp_query_parse("", "body", &q));
   RELAY_ERROR(wp_snippetize_string(q, "body", text, 10, &num_results, start_offsets, end_offsets));
-  ASSERT(num_results == 0);
+  ASSERT_EQUALS_UINT(0, num_results);
 
   return NO_ERROR;
 }
@@ -35,10 +35,10 @@ TEST(terms) {
 
   RELAY_ERROR(wp_query_parse("sing", "body", &q));
   RELAY_ERROR(wp_snippetize_string(q, "body", text, 10, &num_results, start_offsets, end_offsets));
-  ASSERT(num_results == 2);
+  ASSERT_EQUALS_UINT(2, num_results);
 
-  ASSERT(start_offsets[0] == 0);
-  ASSERT(end_offsets[0] == 4);
+  ASSERT_EQUALS_UINT(0, start_offsets[0]);
+  ASSERT_EQUALS_UINT(4, end_offsets[0]);
 
   return NO_ERROR;
 }
@@ -51,19 +51,19 @@ TEST(conjuctions) {
 
   RELAY_ERROR(wp_query_parse("sing muse", "body", &q));
   RELAY_ERROR(wp_snippetize_string(q, "body", text, 10, &num_results, start_offsets, end_offsets));
-  ASSERT(num_results == 4);
+  ASSERT_EQUALS_UINT(4, num_results);
 
-  ASSERT(start_offsets[0] == 0);
-  ASSERT(end_offsets[0] == 4);
+  ASSERT_EQUALS_UINT(0, start_offsets[0]);
+  ASSERT_EQUALS_UINT(4, end_offsets[0]);
 
-  ASSERT(start_offsets[1] == 23);
-  ASSERT(end_offsets[1] == 27);
+  ASSERT_EQUALS_UINT(23, start_offsets[1]);
+  ASSERT_EQUALS_UINT(27, end_offsets[1]);
 
-  ASSERT(start_offsets[2] == 549);
-  ASSERT(end_offsets[2] == 553);
+  ASSERT_EQUALS_UINT(549, start_offsets[2]);
+  ASSERT_EQUALS_UINT(553, end_offsets[2]);
 
-  ASSERT(start_offsets[3] == 603);
-  ASSERT(end_offsets[3] == 607);
+  ASSERT_EQUALS_UINT(603, start_offsets[3]);
+  ASSERT_EQUALS_UINT(607, end_offsets[3]);
 
   return NO_ERROR;
 }
@@ -76,20 +76,20 @@ TEST(disjunctions) {
 
   RELAY_ERROR(wp_query_parse("sing OR muse", "body", &q));
   RELAY_ERROR(wp_snippetize_string(q, "body", text, 10, &num_results, start_offsets, end_offsets));
-  ASSERT(num_results == 4);
+  ASSERT_EQUALS_UINT(4, num_results);
 
   // same as above
-  ASSERT(start_offsets[0] == 0);
-  ASSERT(end_offsets[0] == 4);
+  ASSERT_EQUALS_UINT(0, start_offsets[0]);
+  ASSERT_EQUALS_UINT(4, end_offsets[0]);
 
-  ASSERT(start_offsets[1] == 23);
-  ASSERT(end_offsets[1] == 27);
+  ASSERT_EQUALS_UINT(23, start_offsets[1]);
+  ASSERT_EQUALS_UINT(27, end_offsets[1]);
 
-  ASSERT(start_offsets[2] == 549);
-  ASSERT(end_offsets[2] == 553);
+  ASSERT_EQUALS_UINT(549, start_offsets[2]);
+  ASSERT_EQUALS_UINT(553, end_offsets[2]);
 
-  ASSERT(start_offsets[3] == 603);
-  ASSERT(end_offsets[3] == 607);
+  ASSERT_EQUALS_UINT(603, start_offsets[3]);
+  ASSERT_EQUALS_UINT(607, end_offsets[3]);
 
   return NO_ERROR;
 }
@@ -102,10 +102,10 @@ TEST(phrases) {
 
   RELAY_ERROR(wp_query_parse("\"sing to me of the man\"", "body", &q));
   RELAY_ERROR(wp_snippetize_string(q, "body", text, 10, &num_results, start_offsets, end_offsets));
-  ASSERT(num_results == 1);
+  ASSERT_EQUALS_UINT(1, num_results);
 
-  ASSERT(start_offsets[0] == 0);
-  ASSERT(end_offsets[0] == 21);
+  ASSERT_EQUALS_UINT(0, start_offsets[0]);
+  ASSERT_EQUALS_UINT(21, end_offsets[0]);
 
   return NO_ERROR;
 }
@@ -118,7 +118,7 @@ TEST(negations) {
 
   RELAY_ERROR(wp_query_parse("-sing", "body", &q));
   RELAY_ERROR(wp_snippetize_string(q, "body", text, 10, &num_results, start_offsets, end_offsets));
-  ASSERT(num_results == 0);
+  ASSERT_EQUALS_UINT(0, num_results);
 
   return NO_ERROR;
 }
@@ -133,11 +133,11 @@ TEST(conjunctions_with_negations) {
   RELAY_ERROR(wp_snippetize_string(q, "body", text, 10, &num_results, start_offsets, end_offsets));
 
   //printf("got %d results\n", num_results);
-  ASSERT(num_results == 1);
+  ASSERT_EQUALS_UINT(1, num_results);
 
   //printf("got %d--%d\n", start_offsets[0], end_offsets[0]);
-  ASSERT(start_offsets[0] == 441);
-  ASSERT(end_offsets[0] == 449);
+  ASSERT_EQUALS_UINT(441, start_offsets[0]);
+  ASSERT_EQUALS_UINT(449, end_offsets[0]);
 
   return NO_ERROR;
 }

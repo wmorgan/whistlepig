@@ -49,9 +49,9 @@ TEST(initial_state) {
   RELAY_ERROR(setup(&segment));
 
   segment_info* si = MMAP_OBJ(segment.seginfo, segment_info);
-  ASSERT(si->num_docs == 0);
+  ASSERT_EQUALS_UINT(0, si->num_docs);
   postings_region* pr = MMAP_OBJ(segment.postings, postings_region);
-  ASSERT(pr->num_postings == 0);
+  ASSERT_EQUALS_UINT(0, pr->num_postings);
 
   RELAY_ERROR(wp_segment_unload(&segment));
   return NO_ERROR;
@@ -71,9 +71,9 @@ TEST(adding_a_doc_increments_counts) {
   RELAY_ERROR(wp_segment_add_posting(&segment, "body", "there", doc_id, 1, positions));
 
   segment_info* si = MMAP_OBJ(segment.seginfo, segment_info);
-  ASSERT(si->num_docs == 1);
+  ASSERT_EQUALS_UINT(1, si->num_docs);
   postings_region* pr = MMAP_OBJ(segment.postings, postings_region);
-  ASSERT(pr->num_postings == 2);
+  ASSERT_EQUALS_UINT(2, pr->num_postings);
 
   RELAY_ERROR(wp_segment_unload(&segment));
   return NO_ERROR;
@@ -96,15 +96,15 @@ TEST(simple_term_queries) {
   query = wp_query_new_term("body", "one");
   RUN_QUERY(query);
 
-  ASSERT(num_results == 1);
-  ASSERT(results[0].doc_id == 1);
+  ASSERT_EQUALS_UINT(1, num_results);
+  ASSERT_EQUALS_UINT(1, results[0].doc_id);
 
   query = wp_query_new_term("body", "two");
   RUN_QUERY(query);
 
-  ASSERT(num_results == 2);
-  ASSERT(results[0].doc_id == 2);
-  ASSERT(results[1].doc_id == 1);
+  ASSERT_EQUALS_UINT(2, num_results);
+  ASSERT_EQUALS_UINT(2, results[0].doc_id);
+  ASSERT_EQUALS_UINT(1, results[1].doc_id);
 
   RELAY_ERROR(wp_segment_unload(&segment));
   return NO_ERROR;
@@ -125,8 +125,8 @@ TEST(simple_conjunctive_queries) {
 
   RUN_QUERY(query);
 
-  ASSERT(num_results == 1);
-  ASSERT(results[0].doc_id == 1);
+  ASSERT_EQUALS_UINT(1, num_results);
+  ASSERT_EQUALS_UINT(1, results[0].doc_id);
 
   query = wp_query_new_conjunction();
   query = wp_query_add(query, wp_query_new_term("body", "four"));
@@ -134,13 +134,13 @@ TEST(simple_conjunctive_queries) {
 
   RUN_QUERY(query);
 
-  ASSERT(num_results == 1);
-  ASSERT(results[0].doc_id == 2);
+  ASSERT_EQUALS_UINT(1, num_results);
+  ASSERT_EQUALS_UINT(2, results[0].doc_id);
 
   // <empty>
   query = wp_query_new_conjunction();
   RUN_QUERY(query);
-  ASSERT(num_results == 0);
+  ASSERT_EQUALS_UINT(0, num_results);
 
   RELAY_ERROR(wp_segment_unload(&segment));
   return NO_ERROR;
@@ -159,30 +159,30 @@ TEST(simple_phrasal_queries) {
   query = wp_query_add(query, wp_query_new_term("body", "one"));
   query = wp_query_add(query, wp_query_new_term("body", "two"));
   RUN_QUERY(query);
-  ASSERT(num_results == 1);
-  ASSERT(results[0].doc_id == 1);
+  ASSERT_EQUALS_UINT(1, num_results);
+  ASSERT_EQUALS_UINT(1, results[0].doc_id);
 
   query = wp_query_new_phrase();
   query = wp_query_add(query, wp_query_new_term("body", "two"));
   query = wp_query_add(query, wp_query_new_term("body", "one"));
   RUN_QUERY(query);
-  ASSERT(num_results == 0);
+  ASSERT_EQUALS_UINT(0, num_results);
 
   query = wp_query_new_phrase();
   query = wp_query_add(query, wp_query_new_term("body", "two"));
   query = wp_query_add(query, wp_query_new_term("body", "three"));
   RUN_QUERY(query);
-  ASSERT(num_results == 2);
-  ASSERT(results[0].doc_id == 2);
-  ASSERT(results[1].doc_id == 1);
+  ASSERT_EQUALS_UINT(2, num_results);
+  ASSERT_EQUALS_UINT(2, results[0].doc_id);
+  ASSERT_EQUALS_UINT(1, results[1].doc_id);
 
   query = wp_query_new_phrase();
   query = wp_query_add(query, wp_query_new_term("body", "one"));
   query = wp_query_add(query, wp_query_new_term("body", "two"));
   query = wp_query_add(query, wp_query_new_term("body", "three"));
   RUN_QUERY(query);
-  ASSERT(num_results == 1);
-  ASSERT(results[0].doc_id == 1);
+  ASSERT_EQUALS_UINT(1, num_results);
+  ASSERT_EQUALS_UINT(1, results[0].doc_id);
 
   RELAY_ERROR(wp_segment_unload(&segment));
   return NO_ERROR;
@@ -207,8 +207,8 @@ TEST(segment_conjuction_of_phrase_queries) {
   query = wp_query_add(query, subquery);
 
   RUN_QUERY(query);
-  ASSERT(num_results == 1);
-  ASSERT(results[0].doc_id == 1);
+  ASSERT_EQUALS_UINT(1, num_results);
+  ASSERT_EQUALS_UINT(1, results[0].doc_id);
 
   // "two three" one
   subquery = wp_query_new_phrase();
@@ -219,8 +219,8 @@ TEST(segment_conjuction_of_phrase_queries) {
   query = wp_query_add(query, wp_query_new_term("body", "one"));
 
   RUN_QUERY(query);
-  ASSERT(num_results == 1);
-  ASSERT(results[0].doc_id == 1);
+  ASSERT_EQUALS_UINT(1, num_results);
+  ASSERT_EQUALS_UINT(1, results[0].doc_id);
 
   // one "three two"
   subquery = wp_query_new_phrase();
@@ -231,7 +231,7 @@ TEST(segment_conjuction_of_phrase_queries) {
   query = wp_query_add(query, subquery);
 
   RUN_QUERY(query);
-  ASSERT(num_results == 0);
+  ASSERT_EQUALS_UINT(0, num_results);
 
   // two "two three"
   subquery = wp_query_new_phrase();
@@ -242,9 +242,9 @@ TEST(segment_conjuction_of_phrase_queries) {
   query = wp_query_add(query, subquery);
 
   RUN_QUERY(query);
-  ASSERT(num_results == 2);
-  ASSERT(results[0].doc_id == 2);
-  ASSERT(results[1].doc_id == 1);
+  ASSERT_EQUALS_UINT(2, num_results);
+  ASSERT_EQUALS_UINT(2, results[0].doc_id);
+  ASSERT_EQUALS_UINT(1, results[1].doc_id);
 
   RELAY_ERROR(wp_segment_unload(&segment));
   return NO_ERROR;
@@ -269,8 +269,8 @@ TEST(negation_queries) {
   query = wp_query_add(query, subquery);
 
   RUN_QUERY(query);
-  ASSERT(num_results == 1);
-  ASSERT(results[0].doc_id == 1);
+  ASSERT_EQUALS_UINT(1, num_results);
+  ASSERT_EQUALS_UINT(1, results[0].doc_id);
 
   // "two three" one
   subquery = wp_query_new_phrase();
@@ -281,8 +281,8 @@ TEST(negation_queries) {
   query = wp_query_add(query, wp_query_new_term("body", "one"));
 
   RUN_QUERY(query);
-  ASSERT(num_results == 1);
-  ASSERT(results[0].doc_id == 1);
+  ASSERT_EQUALS_UINT(1, num_results);
+  ASSERT_EQUALS_UINT(1, results[0].doc_id);
 
   // one "three two"
   subquery = wp_query_new_phrase();
@@ -293,7 +293,7 @@ TEST(negation_queries) {
   query = wp_query_add(query, subquery);
 
   RUN_QUERY(query);
-  ASSERT(num_results == 0);
+  ASSERT_EQUALS_UINT(0, num_results);
 
   // two "two three"
   subquery = wp_query_new_phrase();
@@ -304,48 +304,48 @@ TEST(negation_queries) {
   query = wp_query_add(query, subquery);
 
   RUN_QUERY(query);
-  ASSERT(num_results == 2);
-  ASSERT(results[0].doc_id == 2);
-  ASSERT(results[1].doc_id == 1);
+  ASSERT_EQUALS_UINT(2, num_results);
+  ASSERT_EQUALS_UINT(2, results[0].doc_id);
+  ASSERT_EQUALS_UINT(1, results[1].doc_id);
 
   // <empty>
   query = wp_query_new_conjunction();
   RUN_QUERY(query);
-  ASSERT(num_results == 0);
+  ASSERT_EQUALS_UINT(0, num_results);
 
   // -one
   subquery = wp_query_new_term("body", "one");
   query = wp_query_new_negation();
   query = wp_query_add(query, subquery);
   RUN_QUERY(query);
-  ASSERT(num_results == 2);
-  ASSERT(results[0].doc_id == 3);
-  ASSERT(results[1].doc_id == 2);
+  ASSERT_EQUALS_UINT(2, num_results);
+  ASSERT_EQUALS_UINT(3, results[0].doc_id);
+  ASSERT_EQUALS_UINT(2, results[1].doc_id);
 
   // -two
   subquery = wp_query_new_term("body", "two");
   query = wp_query_new_negation();
   query = wp_query_add(query, subquery);
   RUN_QUERY(query);
-  ASSERT(num_results == 1);
-  ASSERT(results[0].doc_id == 3);
+  ASSERT_EQUALS_UINT(1, num_results);
+  ASSERT_EQUALS_UINT(3, results[0].doc_id);
 
   // -three
   subquery = wp_query_new_term("body", "three");
   query = wp_query_new_negation();
   query = wp_query_add(query, subquery);
   RUN_QUERY(query);
-  ASSERT(num_results == 0);
+  ASSERT_EQUALS_UINT(0, num_results);
 
   // -potato
   subquery = wp_query_new_term("body", "potato");
   query = wp_query_new_negation();
   query = wp_query_add(query, subquery);
   RUN_QUERY(query);
-  ASSERT(num_results == 3);
-  ASSERT(results[0].doc_id == 3);
-  ASSERT(results[1].doc_id == 2);
-  ASSERT(results[2].doc_id == 1);
+  ASSERT_EQUALS_UINT(3, num_results);
+  ASSERT_EQUALS_UINT(3, results[0].doc_id);
+  ASSERT_EQUALS_UINT(2, results[1].doc_id);
+  ASSERT_EQUALS_UINT(1, results[2].doc_id);
 
   // -"one two"
   subquery = wp_query_new_conjunction();
@@ -354,9 +354,9 @@ TEST(negation_queries) {
   query = wp_query_new_negation();
   query = wp_query_add(query, subquery);
   RUN_QUERY(query);
-  ASSERT(num_results == 2);
-  ASSERT(results[0].doc_id == 3);
-  ASSERT(results[1].doc_id == 2);
+  ASSERT_EQUALS_UINT(2, num_results);
+  ASSERT_EQUALS_UINT(3, results[0].doc_id);
+  ASSERT_EQUALS_UINT(2, results[1].doc_id);
 
   // -(AND one three)
   subquery = wp_query_new_conjunction();
@@ -365,9 +365,9 @@ TEST(negation_queries) {
   query = wp_query_new_negation();
   query = wp_query_add(query, subquery);
   RUN_QUERY(query);
-  ASSERT(num_results == 2);
-  ASSERT(results[0].doc_id == 3);
-  ASSERT(results[1].doc_id == 2);
+  ASSERT_EQUALS_UINT(2, num_results);
+  ASSERT_EQUALS_UINT(3, results[0].doc_id);
+  ASSERT_EQUALS_UINT(2, results[1].doc_id);
 
   // -"one three"
   subquery = wp_query_new_phrase();
@@ -376,7 +376,7 @@ TEST(negation_queries) {
   query = wp_query_new_negation();
   query = wp_query_add(query, subquery);
   RUN_QUERY(query);
-  ASSERT(num_results == 3);
+  ASSERT_EQUALS_UINT(3, num_results);
 
   // (AND -one three)
   subquery = wp_query_new_negation();
@@ -385,9 +385,9 @@ TEST(negation_queries) {
   query = wp_query_add(query, subquery);
   query = wp_query_add(query, wp_query_new_term("body", "three"));
   RUN_QUERY(query);
-  ASSERT(num_results == 2);
-  ASSERT(results[0].doc_id == 3);
-  ASSERT(results[1].doc_id == 2);
+  ASSERT_EQUALS_UINT(2, num_results);
+  ASSERT_EQUALS_UINT(3, results[0].doc_id);
+  ASSERT_EQUALS_UINT(2, results[1].doc_id);
 
   // (AND three -one)
   subquery = wp_query_new_negation();
@@ -396,9 +396,9 @@ TEST(negation_queries) {
   query = wp_query_add(query, wp_query_new_term("body", "three"));
   query = wp_query_add(query, subquery);
   RUN_QUERY(query);
-  ASSERT(num_results == 2);
-  ASSERT(results[0].doc_id == 3);
-  ASSERT(results[1].doc_id == 2);
+  ASSERT_EQUALS_UINT(2, num_results);
+  ASSERT_EQUALS_UINT(3, results[0].doc_id);
+  ASSERT_EQUALS_UINT(2, results[1].doc_id);
 
   RELAY_ERROR(wp_segment_unload(&segment));
   return NO_ERROR;

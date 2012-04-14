@@ -3,13 +3,13 @@
 
 #define ASSERT_NEXT_WORD(word) { \
   int token_type = yylex(scanner); \
-  ASSERT(token_type == TOK_WORD); \
+  ASSERT_EQUALS_UINT(TOK_WORD, token_type); \
   ASSERT(!strcmp(word, yyget_text(scanner))); \
 }
 
 #define ASSERT_DONE { \
   int token_type = yylex(scanner); \
-  ASSERT(token_type == TOK_DONE); \
+  ASSERT_EQUALS_UINT(TOK_DONE, token_type); \
 }
 
 TEST(tokenizes_easy_words) {

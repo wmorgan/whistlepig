@@ -50,24 +50,24 @@ TEST(conjunctions) {
   RELAY_ERROR(setup(&index));
 
   RUN_QUERY("one two");
-  ASSERT(num_results == 1);
-  ASSERT(results[0] == 1);
+  ASSERT_EQUALS_UINT(1, num_results);
+  ASSERT_EQUALS_UINT64(1, results[0]);
 
   RUN_QUERY("three five");
-  ASSERT(num_results == 1);
-  ASSERT(results[0] == 3);
+  ASSERT_EQUALS_UINT(1, num_results);
+  ASSERT_EQUALS_UINT64(3, results[0]);
 
   RUN_QUERY("one five");
-  ASSERT(num_results == 0);
+  ASSERT_EQUALS_UINT(0, num_results);
 
   RUN_QUERY("three");
-  ASSERT(num_results == 3);
+  ASSERT_EQUALS_UINT(3, num_results);
 
   RUN_QUERY("one");
-  ASSERT(num_results == 1);
+  ASSERT_EQUALS_UINT(1, num_results);
 
   RUN_QUERY("one one one");
-  ASSERT(num_results == 1);
+  ASSERT_EQUALS_UINT(1, num_results);
 
   RELAY_ERROR(shutdown(index));
   return NO_ERROR;
@@ -82,32 +82,32 @@ TEST(disjunctions) {
   RELAY_ERROR(setup(&index));
 
   RUN_QUERY("one OR two");
-  ASSERT(num_results == 2);
-  ASSERT(results[0] == 2);
-  ASSERT(results[1] == 1);
+  ASSERT_EQUALS_UINT(2, num_results);
+  ASSERT_EQUALS_UINT64(2, results[0]);
+  ASSERT_EQUALS_UINT64(1, results[1]);
 
   RUN_QUERY("one OR two OR three");
-  ASSERT(num_results == 3);
-  ASSERT(results[0] == 3);
-  ASSERT(results[1] == 2);
-  ASSERT(results[2] == 1);
+  ASSERT_EQUALS_UINT(3, num_results);
+  ASSERT_EQUALS_UINT64(3, results[0]);
+  ASSERT_EQUALS_UINT64(2, results[1]);
+  ASSERT_EQUALS_UINT64(1, results[2]);
 
   RUN_QUERY("three OR two OR one");
-  ASSERT(num_results == 3);
-  ASSERT(results[0] == 3);
-  ASSERT(results[1] == 2);
-  ASSERT(results[2] == 1);
+  ASSERT_EQUALS_UINT(3, num_results);
+  ASSERT_EQUALS_UINT64(3, results[0]);
+  ASSERT_EQUALS_UINT64(2, results[1]);
+  ASSERT_EQUALS_UINT64(1, results[2]);
 
   RUN_QUERY("one OR one OR one");
-  ASSERT(num_results == 1);
-  ASSERT(results[0] == 1);
+  ASSERT_EQUALS_UINT(1, num_results);
+  ASSERT_EQUALS_UINT64(1, results[0]);
 
   RUN_QUERY("six OR one");
-  ASSERT(num_results == 1);
-  ASSERT(results[0] == 1);
+  ASSERT_EQUALS_UINT(1, num_results);
+  ASSERT_EQUALS_UINT64(1, results[0]);
 
   RUN_QUERY("six OR nine");
-  ASSERT(num_results == 0);
+  ASSERT_EQUALS_UINT(0, num_results);
 
   RELAY_ERROR(shutdown(index));
   return NO_ERROR;
@@ -122,31 +122,31 @@ TEST(phrases) {
   RELAY_ERROR(setup(&index));
 
   RUN_QUERY("\"one\"");
-  ASSERT(num_results == 1);
-  ASSERT(results[0] == 1);
+  ASSERT_EQUALS_UINT(1, num_results);
+  ASSERT_EQUALS_UINT64(1, results[0]);
 
   RUN_QUERY("\"one two\"");
-  ASSERT(num_results == 1);
-  ASSERT(results[0] == 1);
+  ASSERT_EQUALS_UINT(1, num_results);
+  ASSERT_EQUALS_UINT64(1, results[0]);
 
   RUN_QUERY("\"one two three\"");
-  ASSERT(num_results == 1);
-  ASSERT(results[0] == 1);
+  ASSERT_EQUALS_UINT(1, num_results);
+  ASSERT_EQUALS_UINT64(1, results[0]);
 
   RUN_QUERY("\"one two three four\"");
-  ASSERT(num_results == 0);
+  ASSERT_EQUALS_UINT(0, num_results);
 
   RUN_QUERY("\"three four five\"");
-  ASSERT(num_results == 1);
-  ASSERT(results[0] == 3);
+  ASSERT_EQUALS_UINT(1, num_results);
+  ASSERT_EQUALS_UINT64(3, results[0]);
 
   RUN_QUERY("\"two three\"");
-  ASSERT(num_results == 2);
-  ASSERT(results[0] == 2);
-  ASSERT(results[1] == 1);
+  ASSERT_EQUALS_UINT(2, num_results);
+  ASSERT_EQUALS_UINT64(2, results[0]);
+  ASSERT_EQUALS_UINT64(1, results[1]);
 
   RUN_QUERY("\"two two\"");
-  ASSERT(num_results == 0);
+  ASSERT_EQUALS_UINT(0, num_results);
 
   RELAY_ERROR(shutdown(index));
   return NO_ERROR;
@@ -161,31 +161,31 @@ TEST(combinations) {
   RELAY_ERROR(setup(&index));
 
   RUN_QUERY("two (three OR one)");
-  ASSERT(num_results == 2);
-  ASSERT(results[0] == 2);
-  ASSERT(results[1] == 1);
+  ASSERT_EQUALS_UINT(2, num_results);
+  ASSERT_EQUALS_UINT64(2, results[0]);
+  ASSERT_EQUALS_UINT64(1, results[1]);
 
   RUN_QUERY("two (three OR four)");
-  ASSERT(num_results == 2);
-  ASSERT(results[0] == 2);
-  ASSERT(results[1] == 1);
+  ASSERT_EQUALS_UINT(2, num_results);
+  ASSERT_EQUALS_UINT64(2, results[0]);
+  ASSERT_EQUALS_UINT64(1, results[1]);
 
   RUN_QUERY("two (three OR four OR five)");
-  ASSERT(num_results == 2);
-  ASSERT(results[0] == 2);
-  ASSERT(results[1] == 1);
+  ASSERT_EQUALS_UINT(2, num_results);
+  ASSERT_EQUALS_UINT64(2, results[0]);
+  ASSERT_EQUALS_UINT64(1, results[1]);
 
   RUN_QUERY("\"two three\" OR four");
-  ASSERT(num_results == 3);
+  ASSERT_EQUALS_UINT(3, num_results);
 
   RUN_QUERY("\"two three\" one");
-  ASSERT(num_results == 1);
-  ASSERT(results[0] == 1);
+  ASSERT_EQUALS_UINT(1, num_results);
+  ASSERT_EQUALS_UINT64(1, results[0]);
 
   RUN_QUERY("three -one");
-  ASSERT(num_results == 2);
-  ASSERT(results[0] == 3);
-  ASSERT(results[1] == 2);
+  ASSERT_EQUALS_UINT(2, num_results);
+  ASSERT_EQUALS_UINT64(3, results[0]);
+  ASSERT_EQUALS_UINT64(2, results[1]);
 
   RELAY_ERROR(shutdown(index));
   return NO_ERROR;
@@ -203,19 +203,19 @@ TEST(resumability) {
   RELAY_ERROR(wp_query_parse("three", "body", &query));
   RELAY_ERROR(wp_index_setup_query(index, query));
   RELAY_ERROR(wp_index_run_query(index, query, 1, &num_results, &results[0]));
-  ASSERT(num_results == 1);
-  ASSERT(results[0] == 3);
+  ASSERT_EQUALS_UINT(1, num_results);
+  ASSERT_EQUALS_UINT64(3, results[0]);
 
   RELAY_ERROR(wp_index_run_query(index, query, 1, &num_results, &results[0]));
-  ASSERT(num_results == 1);
-  ASSERT(results[0] == 2);
+  ASSERT_EQUALS_UINT(1, num_results);
+  ASSERT_EQUALS_UINT64(2, results[0]);
 
   RELAY_ERROR(wp_index_run_query(index, query, 1, &num_results, &results[0]));
-  ASSERT(num_results == 1);
-  ASSERT(results[0] == 1);
+  ASSERT_EQUALS_UINT(1, num_results);
+  ASSERT_EQUALS_UINT64(1, results[0]);
 
   RELAY_ERROR(wp_index_run_query(index, query, 1, &num_results, &results[0]));
-  ASSERT(num_results == 0);
+  ASSERT_EQUALS_UINT(0, num_results);
 
   RELAY_ERROR(wp_index_teardown_query(index, query));
   wp_query_free(query);
@@ -224,11 +224,11 @@ TEST(resumability) {
   RELAY_ERROR(wp_query_parse("one", "body", &query));
   RELAY_ERROR(wp_index_setup_query(index, query));
   RELAY_ERROR(wp_index_run_query(index, query, 1, &num_results, &results[0]));
-  ASSERT(num_results == 1);
-  ASSERT(results[0] == 1);
+  ASSERT_EQUALS_UINT(1, num_results);
+  ASSERT_EQUALS_UINT64(1, results[0]);
 
   RELAY_ERROR(wp_index_run_query(index, query, 1, &num_results, &results[0]));
-  ASSERT(num_results == 0);
+  ASSERT_EQUALS_UINT(0, num_results);
 
   RELAY_ERROR(wp_index_teardown_query(index, query));
   wp_query_free(query);
@@ -249,8 +249,8 @@ TEST(phrases_against_multiple_matches_in_doc) {
   RELAY_ERROR(add_string(index, "five four five six"));
 
   RUN_QUERY("\"four five six\"");
-  ASSERT(num_results == 1);
-  ASSERT(results[0] == 4);
+  ASSERT_EQUALS_UINT(1, num_results);
+  ASSERT_EQUALS_UINT64(4, results[0]);
 
   RELAY_ERROR(shutdown(index));
 
@@ -267,16 +267,16 @@ TEST(queries_against_an_empty_index) {
   RELAY_ERROR(wp_index_create(&index, INDEX_PATH));
 
   RUN_QUERY("hello");
-  ASSERT(num_results == 0);
+  ASSERT_EQUALS_UINT(0, num_results);
 
   RUN_QUERY("\"four five\"");
-  ASSERT(num_results == 0);
+  ASSERT_EQUALS_UINT(0, num_results);
 
   RUN_QUERY("four OR five");
-  ASSERT(num_results == 0);
+  ASSERT_EQUALS_UINT(0, num_results);
 
   RUN_QUERY("-hello");
-  ASSERT(num_results == 0);
+  ASSERT_EQUALS_UINT(0, num_results);
 
   RELAY_ERROR(shutdown(index));
 
@@ -311,40 +311,40 @@ TEST(fielded_queries) {
   RELAY_ERROR(wp_entry_free(entry));
 
   RUN_QUERY("subject:there");
-  ASSERT(num_results == 1);
+  ASSERT_EQUALS_UINT(1, num_results);
 
   RUN_QUERY("body:there");
-  ASSERT(num_results == 0);
+  ASSERT_EQUALS_UINT(0, num_results);
 
   RUN_QUERY("there");
-  ASSERT(num_results == 0);
+  ASSERT_EQUALS_UINT(0, num_results);
 
   RUN_QUERY("subject:hello");
-  ASSERT(num_results == 2);
+  ASSERT_EQUALS_UINT(2, num_results);
 
   RUN_QUERY("body:hello");
-  ASSERT(num_results == 0);
+  ASSERT_EQUALS_UINT(0, num_results);
 
   RUN_QUERY("hello");
-  ASSERT(num_results == 0);
+  ASSERT_EQUALS_UINT(0, num_results);
 
   RUN_QUERY("subject:vacation body:harry");
-  ASSERT(num_results == 1);
+  ASSERT_EQUALS_UINT(1, num_results);
 
   RUN_QUERY("subject:vacation harry");
-  ASSERT(num_results == 1);
+  ASSERT_EQUALS_UINT(1, num_results);
 
   RUN_QUERY("subject:vacation -body:harry");
-  ASSERT(num_results == 0);
+  ASSERT_EQUALS_UINT(0, num_results);
 
   RUN_QUERY("subject:hello -body:harry");
-  ASSERT(num_results == 1);
+  ASSERT_EQUALS_UINT(1, num_results);
 
   RUN_QUERY("subject:hello body:\"i am going\"");
-  ASSERT(num_results == 1);
+  ASSERT_EQUALS_UINT(1, num_results);
 
   RUN_QUERY("-subject:hello body:\"i am going\"");
-  ASSERT(num_results == 0);
+  ASSERT_EQUALS_UINT(0, num_results);
 
   return NO_ERROR;
 }
@@ -360,13 +360,13 @@ TEST(utf8_chars) {
   RELAY_ERROR(add_string(index, "hello 我 能 吞下 玻璃 而 不 傷 身體 。")); // pre-tokenized for your pleasure
 
   RUN_QUERY("我");
-  ASSERT(num_results == 1);
+  ASSERT_EQUALS_UINT(1, num_results);
 
   RUN_QUERY("吞下");
-  ASSERT(num_results == 1);
+  ASSERT_EQUALS_UINT(1, num_results);
 
   RUN_QUERY("\"不 傷 身體\"");
-  ASSERT(num_results == 1);
+  ASSERT_EQUALS_UINT(1, num_results);
 
   RELAY_ERROR(shutdown(index));
 
@@ -382,25 +382,25 @@ TEST(every_selector) {
   RELAY_ERROR(setup(&index));
 
   RUN_QUERY("*");
-  ASSERT(num_results == 3);
-  ASSERT(results[0] == 3);
-  ASSERT(results[1] == 2);
-  ASSERT(results[2] == 1);
+  ASSERT_EQUALS_UINT(3, num_results);
+  ASSERT_EQUALS_UINT64(3, results[0]);
+  ASSERT_EQUALS_UINT64(2, results[1]);
+  ASSERT_EQUALS_UINT64(1, results[2]);
 
   RUN_QUERY("-*");
-  ASSERT(num_results == 0);
+  ASSERT_EQUALS_UINT(0, num_results);
 
   RUN_QUERY("* OR four");
-  ASSERT(num_results == 3);
-  ASSERT(results[0] == 3);
-  ASSERT(results[1] == 2);
-  ASSERT(results[2] == 1);
+  ASSERT_EQUALS_UINT(3, num_results);
+  ASSERT_EQUALS_UINT64(3, results[0]);
+  ASSERT_EQUALS_UINT64(2, results[1]);
+  ASSERT_EQUALS_UINT64(1, results[2]);
 
   RUN_QUERY("* OR asdfasefs");
-  ASSERT(num_results == 3);
-  ASSERT(results[0] == 3);
-  ASSERT(results[1] == 2);
-  ASSERT(results[2] == 1);
+  ASSERT_EQUALS_UINT(3, num_results);
+  ASSERT_EQUALS_UINT64(3, results[0]);
+  ASSERT_EQUALS_UINT64(2, results[1]);
+  ASSERT_EQUALS_UINT64(1, results[2]);
 
   RELAY_ERROR(shutdown(index));
   return NO_ERROR;

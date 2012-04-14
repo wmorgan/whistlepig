@@ -19,7 +19,7 @@ static map_and_pool* setup() {
 
 TEST(stringmap_initial_state) {
   map_and_pool* mp = setup();
-  ASSERT(mp->map->n_occupied == 0);
+  ASSERT_EQUALS_UINT(0, mp->map->n_occupied);
   ASSERT(!stringmap_needs_bump(mp->map));
 
   free(mp);
@@ -46,7 +46,7 @@ TEST(stringmap_multiple_adds) {
   ASSERT(x != (uint32_t)-1);
   RELAY_ERROR(stringmap_add(mp->map, mp->pool, "hot potato", &y));
   ASSERT(y != (uint32_t)-1);
-  ASSERT(x == y);
+  ASSERT_EQUALS_UINT(y, x);
 
   free(mp);
   return NO_ERROR;

@@ -15,13 +15,13 @@ TEST(empty_queries) {
 TEST(query_parsing) {
   wp_query* q;
   RELAY_ERROR(wp_query_parse("i eat mice", "body", &q));
-  ASSERT(q->num_children == 3);
-  ASSERT(q->type == WP_QUERY_CONJ);
-  ASSERT(q->field == NULL);
-  ASSERT(q->word == NULL);
+  ASSERT_EQUALS_UINT(3, q->num_children);
+  ASSERT_EQUALS_UINT(WP_QUERY_CONJ, q->type);
+  ASSERT_EQUALS_PTR(NULL, q->field);
+  ASSERT_EQUALS_PTR(NULL, q->word);
 
   ASSERT(q->children != NULL);
-  ASSERT(q->children->type == WP_QUERY_TERM);
+  ASSERT_EQUALS_UINT(WP_QUERY_TERM, q->children->type);
   ASSERT(!strcmp(q->children->field, "body"));
   ASSERT(!strcmp(q->children->word, "i"));
 
