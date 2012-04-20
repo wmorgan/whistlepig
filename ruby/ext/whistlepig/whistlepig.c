@@ -337,8 +337,8 @@ static VALUE query_new(VALUE class, VALUE default_field, VALUE string) {
   }
 
   VALUE o_query = Data_Wrap_Struct(class, NULL, wp_query_free, query);
-  VALUE argv[2] = { string, default_field };
-  rb_obj_call_init(o_query, 2, argv);
+  VALUE argv[1] = { string };
+  rb_obj_call_init(o_query, 1, argv);
 
   return o_query;
 }
@@ -390,6 +390,10 @@ static VALUE query_map_terms(VALUE self) {
   wp_query* result = wp_query_substitute(query, yielding_substituter);
 
   VALUE o_query = Data_Wrap_Struct(c_query, NULL, wp_query_free, result);
+
+  VALUE argv[1] = { rb_iv_get(self, "@query")  };
+  rb_obj_call_init(o_query, 1, argv);
+
   return o_query;
 }
 
@@ -414,8 +418,8 @@ static VALUE query_and(VALUE self, VALUE v_other) {
   result = wp_query_add(result, wp_query_clone(other));
 
   VALUE o_result = Data_Wrap_Struct(c_query, NULL, wp_query_free, result);
-  VALUE argv[2] = { Qnil, Qnil }; // i guess
-  rb_obj_call_init(o_result, 2, argv);
+  VALUE argv[1] = { rb_iv_get(self, "@query") }; // i guess
+  rb_obj_call_init(o_result, 1, argv);
 
   return o_result;
 }
@@ -441,8 +445,8 @@ static VALUE query_or(VALUE self, VALUE v_other) {
   result = wp_query_add(result, wp_query_clone(other));
 
   VALUE o_result = Data_Wrap_Struct(c_query, NULL, wp_query_free, result);
-  VALUE argv[2] = { Qnil, Qnil }; // i guess
-  rb_obj_call_init(o_result, 2, argv);
+  VALUE argv[1] = { rb_iv_get(self, "@query") }; // i guess
+  rb_obj_call_init(o_result, 1, argv);
 
   return o_result;
 }
@@ -600,7 +604,7 @@ void Init_whistlepig() {
 
   c_query = rb_define_class_under(m_whistlepig, "Query", rb_cObject);
   rb_define_singleton_method(c_query, "new", query_new, 2);
-  rb_define_method(c_query, "initialize", query_init, 2);
+  rb_define_method(c_query, "initialize", query_init, 1);
   rb_define_method(c_query, "and", query_and, 1);
   rb_define_method(c_query, "or", query_or, 1);
   rb_define_method(c_query, "to_s", query_to_s, 0);
