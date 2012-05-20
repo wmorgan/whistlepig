@@ -256,8 +256,6 @@ RAISING_STATIC(get_and_writelock_last_segment(wp_index* index, wp_entry* entry, 
     return NO_ERROR;
   }
 
-  RAISE_ERROR("making new");
-
   // otherwise, unlock it and let's make a new one
   RELAY_ERROR(wp_segment_release_lock(seg));
 
