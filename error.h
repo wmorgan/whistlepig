@@ -25,8 +25,13 @@
 #include <stdio.h>
 #include <string.h>
 
+#define WP_ERROR_TYPE_BASIC 1
+#define WP_ERROR_TYPE_SYSTEM 2
+#define WP_ERROR_TYPE_VERSION 3
+
 // pseudo-backtrace
 typedef struct wp_error {
+  unsigned char type;
   unsigned int size;
   const char* msg;
   const char** srcs;
@@ -39,25 +44,30 @@ typedef struct wp_error {
 // API methods
 
 // private: make a new error object with a message and source line
-wp_error* wp_error_new(const char* msg, const char* src) RAISES_ERROR;
+wp_error* wp_error_new(const char* msg, const char* src, unsigned char type) RAISES_ERROR;
 // private: add a source line to a pre-existing error
 wp_error* wp_error_chain(wp_error* e, const char* src) RAISES_ERROR;
 
 // public: free an error, once handled
 void wp_error_free(wp_error* e);
 
-// public: raise an error with a printf-style message
-#define RAISE_ERROR(fmt, ...) do { \
+// private: internal mechanics for raising an error
+#define RAISE_ERROR_OF_TYPE(type, fmt, ...) do { \
   char* msg = malloc(1024); \
   char* src = malloc(1024); \
   snprintf(msg, 1024, fmt, ## __VA_ARGS__); \
   snprintf(src, 1024, "%s (%s:%d)", __PRETTY_FUNCTION__, __FILE__, __LINE__); \
-  return wp_error_new(msg, src); \
+  return wp_error_new(msg, src, type); \
 } while(0)
 
-// public: raise an error with a printf-style message and have strerror() autoamtically
-// appended
-#define RAISE_SYSERROR(fmt, ...) RAISE_ERROR(fmt ": %s", ## __VA_ARGS__, strerror(errno))
+// public: raise a basic error
+#define RAISE_ERROR(fmt, ...) RAISE_ERROR_OF_TYPE(WP_ERROR_TYPE_BASIC, fmt, ## __VA_ARGS__)
+
+// public: raise a version error
+#define RAISE_VERSION_ERROR(fmt, ...) RAISE_ERROR_OF_TYPE(WP_ERROR_TYPE_VERSION, fmt, ## __VA_ARGS__)
+
+// public: raise a system error with strerror() automatically appended to the message
+#define RAISE_SYSERROR(fmt, ...) RAISE_ERROR_OF_TYPE(WP_ERROR_TYPE_SYSTEM, fmt ": %s", ## __VA_ARGS__, strerror(errno))
 
 // public: relay an error up the stack if the called function returns one.
 #define RELAY_ERROR(e) do { \

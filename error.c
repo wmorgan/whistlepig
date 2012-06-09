@@ -1,9 +1,10 @@
 #include <stdlib.h>
 #include "error.h"
 
-wp_error* wp_error_new(const char* msg, const char* src) {
+wp_error* wp_error_new(const char* msg, const char* src, unsigned char type) {
   wp_error* ret = malloc(sizeof(wp_error));
   ret->msg = msg;
+  ret->type = type;
   ret->size = 1;
   ret->srcs = malloc(sizeof(const char*));
   ret->srcs[0] = src;

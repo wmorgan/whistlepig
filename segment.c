@@ -64,7 +64,7 @@ RAISING_STATIC(segment_info_init(segment_info* si, uint32_t segment_version)) {
 }
 
 RAISING_STATIC(segment_info_validate(segment_info* si, uint32_t segment_version)) {
-  if(si->segment_version != segment_version) RAISE_ERROR("segment has type %u; expecting type %u", si->segment_version, segment_version);
+  if(si->segment_version != segment_version) RAISE_VERSION_ERROR("segment has type %u; expecting type %u", si->segment_version, segment_version);
   return NO_ERROR;
 }
 

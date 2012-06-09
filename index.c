@@ -32,7 +32,6 @@ RAISING_STATIC(release_lock(wp_index* index)) {
   return NO_ERROR;
 }
 
-
 RAISING_STATIC(index_info_init(index_info* ii, uint32_t index_version)) {
   ii->index_version = index_version;
   ii->num_segments = 0;
@@ -42,7 +41,7 @@ RAISING_STATIC(index_info_init(index_info* ii, uint32_t index_version)) {
 }
 
 RAISING_STATIC(index_info_validate(index_info* ii, uint32_t index_version)) {
-  if(ii->index_version != index_version) RAISE_ERROR("index has type %u; expecting type %u", ii->index_version, index_version);
+  if(ii->index_version != index_version) RAISE_VERSION_ERROR("index has type %u; expecting type %u", ii->index_version, index_version);
   return NO_ERROR;
 }
 
