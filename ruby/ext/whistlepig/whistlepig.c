@@ -7,7 +7,9 @@ static VALUE c_index;
 static VALUE c_entry;
 static VALUE c_query;
 static VALUE c_error;
-static VALUE c_parseerror;
+static VALUE c_parse_error;
+static VALUE c_sys_error;
+static VALUE c_version_error;
 
 static void index_free(wp_index* index) {
   wp_error* e = wp_index_free(index);
@@ -20,7 +22,12 @@ static void index_free(wp_index* index) {
 
 #define RAISE_IF_NECESSARY(e) do { \
   if(e != NULL) { \
-    VALUE exc = rb_exc_new2(c_error, e->msg); \
+    VALUE exc; \
+    switch(e->type) { \
+      case WP_ERROR_TYPE_SYSTEM: exc = rb_exc_new2(c_sys_error, e->msg); break; \
+      case WP_ERROR_TYPE_VERSION: exc = rb_exc_new2(c_version_error, e->msg); break; \
+      default: exc = rb_exc_new2(c_error, e->msg); break; \
+    } \
     wp_error_free(e); \
     rb_exc_raise(exc); \
   }  \
@@ -331,7 +338,7 @@ static VALUE query_new(VALUE class, VALUE default_field, VALUE string) {
   wp_query* query;
   wp_error* e = wp_query_parse(RSTRING_PTR(string), RSTRING_PTR(default_field), &query);
   if(e != NULL) {
-    VALUE exc = rb_exc_new2(c_parseerror, e->msg);
+    VALUE exc = rb_exc_new2(c_parse_error, e->msg);
     wp_error_free(e);
     rb_exc_raise(exc);
   }
@@ -614,5 +621,7 @@ void Init_whistlepig() {
   rb_define_attr(c_query, "query", 1, 0);
 
   c_error = rb_define_class_under(m_whistlepig, "Error", rb_eStandardError);
-  c_parseerror = rb_define_class_under(m_whistlepig, "ParseError", rb_eStandardError);
+  c_parse_error = rb_define_class_under(m_whistlepig, "ParseError", c_error);
+  c_sys_error = rb_define_class_under(m_whistlepig, "SystemError", c_error);
+  c_version_error = rb_define_class_under(m_whistlepig, "VersionError", c_error);
 }
