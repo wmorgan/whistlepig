@@ -31,6 +31,23 @@ wp_error* wp_segment_release_lock(wp_segment* seg) {
   return NO_ERROR;
 }
 
+wp_error* wp_segment_count_term(wp_segment* seg, const char* field, const char* word, uint32_t* num_results) {
+  stringmap* sh = MMAP_OBJ(seg->stringmap, stringmap);
+  stringpool* sp = MMAP_OBJ(seg->stringpool, stringpool);
+  termhash* th = MMAP_OBJ(seg->termhash, termhash);
+
+  term t;
+  if(field == NULL) t.field_s = 0; // label sentinel
+  else t.field_s = stringmap_string_to_int(sh, sp, field);
+  t.word_s = stringmap_string_to_int(sh, sp, word);
+
+  posting_list_header* plh = termhash_get_val(th, t);
+  if(plh == NULL) *num_results = 0;
+  else *num_results = plh->count;
+
+  return NO_ERROR;
+}
+
 static void postings_region_init(postings_region* pr, uint32_t initial_size, uint32_t postings_type_and_flags) {
   pr->postings_type_and_flags = postings_type_and_flags;
   pr->num_postings = 0;

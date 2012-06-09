@@ -149,6 +149,57 @@ wp_error* wp_index_setup_query(wp_index* index, wp_query* query) {
   return NO_ERROR;
 }
 
+#define RESULT_BUF_SIZE 1024
+// count the results by running the query until it stops. slow!
+RAISING_STATIC(count_query_by_running_it(wp_index* index, wp_query* query, uint32_t* num_results)) {
+  uint64_t results[RESULT_BUF_SIZE];
+
+  *num_results = 0;
+  while(1) {
+    uint32_t this_num_results;
+    RELAY_ERROR(wp_index_run_query(index, query, RESULT_BUF_SIZE, &this_num_results, results));
+    *num_results += this_num_results;
+    if(this_num_results < RESULT_BUF_SIZE) break; // done
+  }
+
+  return NO_ERROR;
+}
+
+RAISING_STATIC(count_query_from_posting_list_header(wp_index* index, wp_query* query, uint32_t* num_results)) {
+  // make sure we have know about all segments (one could've been added by a writer)
+  RELAY_ERROR(grab_readlock(index));
+  RELAY_ERROR(ensure_all_segments(index));
+  RELAY_ERROR(release_lock(index));
+
+  *num_results = 0;
+  for(int i = 0; i < index->num_segments; i++) {
+    uint32_t this_num_results;
+
+    DEBUG("counting on segment %d", i);
+    wp_segment* seg = &index->segments[i];
+    RELAY_ERROR(wp_segment_grab_readlock(seg));
+    RELAY_ERROR(wp_segment_reload(seg));
+    RELAY_ERROR(wp_segment_count_term(seg, query->field, query->word, &this_num_results));
+    RELAY_ERROR(wp_segment_release_lock(seg));
+    *num_results += this_num_results;
+    DEBUG("got %d results from segment %d", this_num_results, i);
+  }
+
+  return NO_ERROR;
+}
+
+RAISING_STATIC(count_query(wp_index* index, wp_query* query, uint32_t* num_results)) {
+  switch(query->type) {
+    case WP_QUERY_TERM:
+    case WP_QUERY_LABEL:
+      RELAY_ERROR(count_query_from_posting_list_header(index, query, num_results));
+      break;
+    case WP_QUERY_EVERY: // TODO -- special case this
+    default:
+      RELAY_ERROR(count_query_by_running_it(index, query, num_results));
+  }
+  return NO_ERROR;
+}
 // can be called multiple times to resume
 wp_error* wp_index_run_query(wp_index* index, wp_query* query, uint32_t max_num_results, uint32_t* num_results, uint64_t* results) {
   *num_results = 0;
@@ -209,20 +260,10 @@ wp_error* wp_index_run_query(wp_index* index, wp_query* query, uint32_t max_num_
   return NO_ERROR;
 }
 
-#define RESULT_BUF_SIZE 1024
-// count the results by just running the query until it stops. slow!
+// just count the results, don't return them
 wp_error* wp_index_count_results(wp_index* index, wp_query* query, uint32_t* num_results) {
-  uint64_t results[RESULT_BUF_SIZE];
-
-  *num_results = 0;
   RELAY_ERROR(wp_index_setup_query(index, query));
-  while(1) {
-    uint32_t this_num_results;
-    RELAY_ERROR(wp_index_run_query(index, query, RESULT_BUF_SIZE, &this_num_results, results));
-    *num_results += this_num_results;
-    if(this_num_results < RESULT_BUF_SIZE) break; // done
-  }
-
+  RELAY_ERROR(count_query(index, query, num_results));
   RELAY_ERROR(wp_index_teardown_query(index, query));
 
   return NO_ERROR;

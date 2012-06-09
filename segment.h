@@ -150,4 +150,7 @@ wp_error* wp_segment_ensure_fit(wp_segment* seg, uint32_t postings_bytes, uint32
 // private: return the size on disk of a position array
 wp_error* wp_segment_sizeof_posarray(wp_segment* seg, uint32_t num_positions, pos_t* positions, uint32_t* size) RAISES_ERROR;
 
+// private: count the number of occurences of a particular term
+wp_error* wp_segment_count_term(wp_segment* seg, const char* field, const char* term, uint32_t* num_results);
+
 #endif
