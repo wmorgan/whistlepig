@@ -18,8 +18,11 @@ Open3.popen3(CMD) do |qin, qout, qerr|
     l =~ /(\d+) (.*)$/ or raise "couldn't parse line #{ARGF.lineno}: #{l.inspect}"
     num, q = $1.to_i, $2
     qin.puts q
-    result = qout.gets
-    result =~ /found (\d+) results in ([\d\.]+)ms/ or raise "couldn't parse program output: #{result.inspect}"
+    while true
+      result = qout.gets
+      result =~ /found (\d+) results in ([\d\.]+)ms/ and break
+      puts ";; warning: couldn't parse program output: #{result.inspect}"
+    end
     num_found, time = $1.to_i, $2.to_f
     if num_found != num
       puts "ERROR: expected #{num}, got #{num_found} for query #{q.inspect}"
