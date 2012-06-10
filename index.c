@@ -365,7 +365,9 @@ wp_error* wp_index_free(wp_index* index) {
 }
 
 wp_error* wp_index_dumpinfo(wp_index* index, FILE* stream) {
-  fprintf(stream, "index has %d segments\n", index->num_segments);
+  index_info* ii = MMAP_OBJ(index->indexinfo, index_info);
+  fprintf(stream, "index resides at %s\n", index->pathname_base);
+  fprintf(stream, "index has %d segments and version %d\n", ii->num_segments, ii->index_version);
   for(int i = 0; i < index->num_segments; i++) {
     fprintf(stream, "\nsegment %d:\n", i);
     wp_segment* seg = &index->segments[i];
