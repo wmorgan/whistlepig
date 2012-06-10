@@ -725,7 +725,7 @@ wp_error* wp_segment_dumpinfo(wp_segment* segment, FILE* stream) {
 
   #define p(a, b) 100.0 * (float)a / (float)b
 
-  fprintf(stream, "segment has type %u\n", pr->postings_type_and_flags);
+  fprintf(stream, "segment has type %u and version %u\n", pr->postings_type_and_flags, si->segment_version);
   fprintf(stream, "segment has %u docs and %u postings\n", si->num_docs, pr->num_postings);
   fprintf(stream, "postings region is %6ukb at %3.1f%% saturation\n", segment->postings.content->size / 1024, p(pr->postings_head, pr->postings_tail));
   fprintf(stream, "    string hash is %6ukb at %3.1f%% saturation\n", segment->stringmap.content->size / 1024, p(sh->n_occupied, sh->n_buckets));
