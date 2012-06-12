@@ -320,7 +320,7 @@ wp_error* wp_segment_sizeof_posarray(wp_segment* seg, uint32_t num_positions, po
 }
 
 #define VALUE_BITMASK 0x7f
-RAISING_STATIC(write_multibyte(uint8_t* location, uint32_t val, uint32_t* size)) {
+RAISING_STATIC(write_uint32_vbe(uint8_t* location, uint32_t val, uint32_t* size)) {
   //printf("xx writing %u to position %p as:\n", val, location);
   uint8_t* start = location;
 
@@ -339,7 +339,7 @@ RAISING_STATIC(write_multibyte(uint8_t* location, uint32_t val, uint32_t* size))
   return NO_ERROR;
 }
 
-RAISING_STATIC(read_multibyte(uint8_t* location, uint32_t* val, uint32_t* size)) {
+RAISING_STATIC(read_uint32_vbe(uint8_t* location, uint32_t* val, uint32_t* size)) {
   uint8_t* start = location;
   uint32_t shift = 0;
 
@@ -381,22 +381,22 @@ RAISING_STATIC(write_posting(wp_segment* seg, posting* po, pos_t positions[])) {
 
   uint32_t doc_id = po->doc_id << 1;
   if(po->num_positions == 1) doc_id |= 1; // marker for single postings
-  RELAY_ERROR(write_multibyte(&pr->postings[pr->postings_head], doc_id, &size));
+  RELAY_ERROR(write_uint32_vbe(&pr->postings[pr->postings_head], doc_id, &size));
   pr->postings_head += size;
   //printf("wrote %u-byte doc_id %u (np1 == %d)\n", size, doc_id, po->num_positions == 1 ? 1 : 0);
 
-  RELAY_ERROR(write_multibyte(&pr->postings[pr->postings_head], offset - po->next_offset, &size));
+  RELAY_ERROR(write_uint32_vbe(&pr->postings[pr->postings_head], offset - po->next_offset, &size));
   pr->postings_head += size;
   //printf("wrote %u-byte offset %u\n", size, offset - po->next_offset);
 
   if(po->num_positions > 1) {
-    RELAY_ERROR(write_multibyte(&pr->postings[pr->postings_head], po->num_positions, &size));
+    RELAY_ERROR(write_uint32_vbe(&pr->postings[pr->postings_head], po->num_positions, &size));
     pr->postings_head += size;
     //printf("wrote %u-byte num positions %u\n", size, po->num_positions);
   }
 
   for(uint32_t i = 0; i < po->num_positions; i++) {
-    RELAY_ERROR(write_multibyte(&pr->postings[pr->postings_head], positions[i] - (i == 0 ? 0 : positions[i - 1]), &size));
+    RELAY_ERROR(write_uint32_vbe(&pr->postings[pr->postings_head], positions[i] - (i == 0 ? 0 : positions[i - 1]), &size));
     pr->postings_head += size;
     //printf("wrote %u-byte positions %u\n", size, positions[i] - (i == 0 ? 0 : positions[i - 1]));
   }
@@ -420,13 +420,13 @@ wp_error* wp_segment_read_posting(wp_segment* s, uint32_t offset, posting* po, i
 
   //DEBUG("reading posting from offset %u -> %p (pr %p base %p)", offset, &pr->postings[offset], pr, &pr->postings);
 
-  RELAY_ERROR(read_multibyte(&pr->postings[offset], &po->doc_id, &size));
+  RELAY_ERROR(read_uint32_vbe(&pr->postings[offset], &po->doc_id, &size));
   int is_single_posting = po->doc_id & 1;
   po->doc_id = po->doc_id >> 1;
   //DEBUG("read doc_id %u (%u bytes)", po->doc_id, size);
   offset += size;
 
-  RELAY_ERROR(read_multibyte(&pr->postings[offset], &po->next_offset, &size));
+  RELAY_ERROR(read_uint32_vbe(&pr->postings[offset], &po->next_offset, &size));
   //DEBUG("read next_offset %u -> %u (%u bytes)", po->next_offset, orig_offset - po->next_offset, size);
   if((po->next_offset == 0) || (po->next_offset > orig_offset)) RAISE_ERROR("read invalid next_offset %u (must be > 0 and < %u)", po->next_offset, orig_offset);
   po->next_offset = orig_offset - po->next_offset;
@@ -435,7 +435,7 @@ wp_error* wp_segment_read_posting(wp_segment* s, uint32_t offset, posting* po, i
   if(include_positions) {
     if(is_single_posting) po->num_positions = 1;
     else {
-      RELAY_ERROR(read_multibyte(&pr->postings[offset], &po->num_positions, &size));
+      RELAY_ERROR(read_uint32_vbe(&pr->postings[offset], &po->num_positions, &size));
       //DEBUG("read num_positions: %u (%u bytes)", po->num_positions, size);
       offset += size;
     }
@@ -443,7 +443,7 @@ wp_error* wp_segment_read_posting(wp_segment* s, uint32_t offset, posting* po, i
     po->positions = malloc(po->num_positions * sizeof(pos_t));
 
     for(uint32_t i = 0; i < po->num_positions; i++) {
-      RELAY_ERROR(read_multibyte(&pr->postings[offset], &po->positions[i], &size));
+      RELAY_ERROR(read_uint32_vbe(&pr->postings[offset], &po->positions[i], &size));
       offset += size;
       po->positions[i] += (i == 0 ? 0 : po->positions[i - 1]);
       //DEBUG("read position %u (%u bytes)", po->positions[i], size);
