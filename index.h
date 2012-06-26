@@ -4,10 +4,10 @@
 // whistlepig index
 // (c) 2011 William Morgan. See COPYING for license terms.
 //
-// the main public interaction point with whistlepig, in addition to the
-// supporting entry and query objects. it holds a collection of segments and
-// essentially relays commands to the appropriate ones, creating new segments
-// as needed.
+// the main public interaction point with whistlepig. controls everything
+// except for the entry and query objects. it holds a collection of segments
+// and essentially relays commands to the appropriate ones, creating new
+// segments as needed.
 
 #include <pthread.h>
 
@@ -18,12 +18,7 @@
 
 #define WP_MAX_SEGMENTS 65534 // max value of wp_search_query->segment_idx - 2 because we need two special numbers
 
-typedef struct index_info {
-  uint32_t index_version;
-  uint32_t num_segments;
-  pthread_rwlock_t lock;
-} index_info;
-
+// in-memory representation of the index
 typedef struct wp_index {
   const char* pathname_base;
   uint16_t num_segments;
@@ -33,6 +28,14 @@ typedef struct wp_index {
   uint8_t open;
   mmap_obj indexinfo;
 } wp_index;
+
+// serialized index info object
+typedef struct index_info {
+  uint32_t index_version;
+  uint32_t num_segments;
+  pthread_rwlock_t lock; // global r/w lock
+} index_info;
+
 
 // API methods
 

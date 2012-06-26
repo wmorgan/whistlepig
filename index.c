@@ -40,6 +40,26 @@ RAISING_STATIC(index_info_init(index_info* ii, uint32_t index_version)) {
   return NO_ERROR;
 }
 
+// some macros to make read/writelock acquisition a little more obvious
+#define START_WRITELOCK(seg) \
+    RELAY_ERROR(wp_segment_grab_writelock(seg)); \
+    RELAY_ERROR(wp_segment_reload(seg))
+
+#define END_WRITELOCK(seg) \
+    RELAY_ERROR(wp_segment_release_lock(seg))
+
+#define START_READLOCK(seg) \
+  RELAY_ERROR(wp_segment_grab_readlock(seg)); \
+  RELAY_ERROR(wp_segment_reload(seg))
+
+#define END_READLOCK(seg) \
+  RELAY_ERROR(wp_segment_release_lock(seg))
+
+#define SAFELY_ENSURE_ALL_SEGMENTS(index) \
+  RELAY_ERROR(grab_readlock(index)); \
+  RELAY_ERROR(ensure_all_segments(index)); \
+  RELAY_ERROR(release_lock(index))
+
 RAISING_STATIC(index_info_validate(index_info* ii, uint32_t index_version)) {
   if(ii->index_version != index_version) RAISE_VERSION_ERROR("index has type %u; expecting type %u", ii->index_version, index_version);
   return NO_ERROR;
@@ -79,22 +99,23 @@ RAISING_STATIC(ensure_segment_pointer_fit(wp_index* index)) {
     index->segments = realloc(index->segments, sizeof(wp_segment) * index->sizeof_segments);
     index->docid_offsets = realloc(index->docid_offsets, sizeof(uint64_t) * index->sizeof_segments);
     if(index->segments == NULL) RAISE_ERROR("oom");
-    if(index->segments == NULL) RAISE_ERROR("oom");
   }
 
   return NO_ERROR;
 }
 
 // ensures that we know about all segments. should be wrapped
-// in a global read mutex to prevent creation.
+// in a global read mutex to prevent race conditions.
 RAISING_STATIC(ensure_all_segments(wp_index* index)) {
   char buf[PATH_BUF_SIZE];
 
+  // ii holds the serialized index info, which we can compare to our in-memory
+  // representation.
   index_info* ii = MMAP_OBJ(index->indexinfo, index_info);
   if(ii->num_segments < index->num_segments) RAISE_ERROR("invalid value for num_segments: %u vs %u", index->num_segments, ii->num_segments);
   if(ii->num_segments == index->num_segments) return NO_ERROR;
 
-  // otherwise, we need to load some more segments
+  // looks like we need to load some more segments
   uint16_t old_num_segments = index->num_segments;
   index->num_segments = ii->num_segments;
   RELAY_ERROR(ensure_segment_pointer_fit(index));
@@ -106,8 +127,8 @@ RAISING_STATIC(ensure_all_segments(wp_index* index)) {
 
     if(i == 0) index->docid_offsets[i] = 0;
     else {
-      // segments return docids 1 through N, so the num_docs in a segment is
-      // also the max document id
+      // segments only capture docids 1 through N, so the num_docs in a segment
+      // is also the max document id
       segment_info* prevsi = MMAP_OBJ(index->segments[i - 1].seginfo, segment_info);
       index->docid_offsets[i] = prevsi->num_docs + index->docid_offsets[i - 1];
     }
@@ -164,11 +185,10 @@ RAISING_STATIC(count_query_by_running_it(wp_index* index, wp_query* query, uint3
   return NO_ERROR;
 }
 
+// count results by just reading it from the postings list header. a special
+// case for single-term and single-label queries that is basically a lookup.
 RAISING_STATIC(count_query_from_posting_list_header(wp_index* index, wp_query* query, uint32_t* num_results)) {
-  // make sure we have know about all segments (one could've been added by a writer)
-  RELAY_ERROR(grab_readlock(index));
-  RELAY_ERROR(ensure_all_segments(index));
-  RELAY_ERROR(release_lock(index));
+  SAFELY_ENSURE_ALL_SEGMENTS(index);
 
   *num_results = 0;
   for(int i = 0; i < index->num_segments; i++) {
@@ -176,10 +196,9 @@ RAISING_STATIC(count_query_from_posting_list_header(wp_index* index, wp_query* q
 
     DEBUG("counting on segment %d", i);
     wp_segment* seg = &index->segments[i];
-    RELAY_ERROR(wp_segment_grab_readlock(seg));
-    RELAY_ERROR(wp_segment_reload(seg));
+    START_READLOCK(seg);
     RELAY_ERROR(wp_segment_count_term(seg, query->field, query->word, &this_num_results));
-    RELAY_ERROR(wp_segment_release_lock(seg));
+    END_READLOCK(seg);
     *num_results += this_num_results;
     DEBUG("got %d results from segment %d", this_num_results, i);
   }
@@ -187,6 +206,7 @@ RAISING_STATIC(count_query_from_posting_list_header(wp_index* index, wp_query* q
   return NO_ERROR;
 }
 
+// dispatch based on the query type
 RAISING_STATIC(count_query(wp_index* index, wp_query* query, uint32_t* num_results)) {
   switch(query->type) {
     case WP_QUERY_TERM:
@@ -199,14 +219,13 @@ RAISING_STATIC(count_query(wp_index* index, wp_query* query, uint32_t* num_resul
   }
   return NO_ERROR;
 }
-// can be called multiple times to resume
+
+// run a query. can be called multiple times to resume
 wp_error* wp_index_run_query(wp_index* index, wp_query* query, uint32_t max_num_results, uint32_t* num_results, uint64_t* results) {
   *num_results = 0;
 
   // make sure we have know about all segments (one could've been added by a writer)
-  RELAY_ERROR(grab_readlock(index));
-  RELAY_ERROR(ensure_all_segments(index));
-  RELAY_ERROR(release_lock(index));
+  SAFELY_ENSURE_ALL_SEGMENTS(index);
 
   if(index->num_segments == 0) return NO_ERROR;
 
@@ -214,10 +233,9 @@ wp_error* wp_index_run_query(wp_index* index, wp_query* query, uint32_t max_num_
     query->segment_idx = index->num_segments - 1;
     DEBUG("setting up segment %u", query->segment_idx);
     wp_segment* seg = &index->segments[query->segment_idx];
-    RELAY_ERROR(wp_segment_grab_readlock(seg));
-    RELAY_ERROR(wp_segment_reload(seg));
+    START_READLOCK(seg);
     RELAY_ERROR(wp_search_init_search_state(query, seg));
-    RELAY_ERROR(wp_segment_release_lock(seg));
+    END_READLOCK(seg);
   }
 
   // at this point, we assume we're initialized and query->segment_idx is the index
@@ -229,10 +247,9 @@ wp_error* wp_index_run_query(wp_index* index, wp_query* query, uint32_t max_num_
 
     DEBUG("searching segment %d", query->segment_idx);
     wp_segment* seg = &index->segments[query->segment_idx];
-    RELAY_ERROR(wp_segment_grab_readlock(seg));
-    RELAY_ERROR(wp_segment_reload(seg));
+    START_READLOCK(seg);
     RELAY_ERROR(wp_search_run_query_on_segment(query, seg, want_num_results, &got_num_results, segment_results));
-    RELAY_ERROR(wp_segment_release_lock(seg));
+    END_READLOCK(seg);
     DEBUG("asked segment %d for %d results, got %d", query->segment_idx, want_num_results, got_num_results);
 
     // extract the per-segment docids from the search results and adjust by
@@ -278,10 +295,13 @@ wp_error* wp_index_teardown_query(wp_index* index, wp_query* query) {
   return NO_ERROR;
 }
 
+// helper function that grabs a writelock on the last segment, and ensures that
+// the entry can fit there. otherwise it makes a new segment and grabs the
+// writelock on that.
+//
+// assumes we have a writelock on the index object here, so that no one can add
+// segments while we're doing this stuff.
 RAISING_STATIC(get_and_writelock_last_segment(wp_index* index, wp_entry* entry, wp_segment** returned_seg)) {
-  // assume we have a writelock on the index object here, so that no one can
-  // add segments while we're doing this stuff.
-
   int success;
   RELAY_ERROR(ensure_all_segments(index)); // make sure we know about all segments
   wp_segment* seg = &index->segments[index->num_segments - 1]; // get last segment
@@ -334,7 +354,6 @@ wp_error* wp_index_add_entry(wp_index* index, wp_entry* entry, uint64_t* doc_id)
   wp_segment* seg = NULL;
   docid_t seg_doc_id;
 
-  // interleaving lock access -- potential for deadlock is high. :(
   RELAY_ERROR(grab_writelock(index)); // grab full-index lock
   RELAY_ERROR(get_and_writelock_last_segment(index, entry, &seg));
   RELAY_ERROR(release_lock(index)); // release full-index lock
@@ -371,10 +390,9 @@ wp_error* wp_index_dumpinfo(wp_index* index, FILE* stream) {
   for(int i = 0; i < index->num_segments; i++) {
     fprintf(stream, "\nsegment %d:\n", i);
     wp_segment* seg = &index->segments[i];
-    RELAY_ERROR(wp_segment_grab_readlock(seg));
-    RELAY_ERROR(wp_segment_reload(seg));
+    START_READLOCK(seg);
     RELAY_ERROR(wp_segment_dumpinfo(seg, stream));
-    RELAY_ERROR(wp_segment_release_lock(seg));
+    END_READLOCK(seg);
   }
 
   return NO_ERROR;
@@ -403,19 +421,16 @@ wp_error* wp_index_delete(const char* pathname_base) {
 wp_error* wp_index_add_label(wp_index* index, const char* label, uint64_t doc_id) {
   int found = 0;
 
-  RELAY_ERROR(grab_writelock(index));
-  RELAY_ERROR(ensure_all_segments(index));
-  RELAY_ERROR(release_lock(index));
+  SAFELY_ENSURE_ALL_SEGMENTS(index);
 
   for(uint32_t i = index->num_segments; i > 0; i--) {
     if(doc_id > index->docid_offsets[i - 1]) {
       wp_segment* seg = &index->segments[i - 1];
 
       DEBUG("found doc %"PRIu64" in segment %u", doc_id, i - 1);
-      RELAY_ERROR(wp_segment_grab_writelock(seg));
-      RELAY_ERROR(wp_segment_reload(seg));
+      START_WRITELOCK(seg);
       RELAY_ERROR(wp_segment_add_label(seg, label, (docid_t)(doc_id - index->docid_offsets[i - 1])));
-      RELAY_ERROR(wp_segment_release_lock(seg));
+      END_WRITELOCK(seg);
       found = 1;
       break;
     }
@@ -430,19 +445,16 @@ wp_error* wp_index_add_label(wp_index* index, const char* label, uint64_t doc_id
 wp_error* wp_index_remove_label(wp_index* index, const char* label, uint64_t doc_id) {
   int found = 0;
 
-  RELAY_ERROR(grab_writelock(index));
-  RELAY_ERROR(ensure_all_segments(index));
-  RELAY_ERROR(release_lock(index));
+  SAFELY_ENSURE_ALL_SEGMENTS(index);
 
   for(uint32_t i = index->num_segments; i > 0; i--) {
     if(doc_id > index->docid_offsets[i - 1]) {
       wp_segment* seg = &index->segments[i - 1];
 
       DEBUG("found doc %"PRIu64" in segment %u", doc_id, i - 1);
-      RELAY_ERROR(wp_segment_grab_writelock(seg));
-      RELAY_ERROR(wp_segment_reload(seg));
+      START_WRITELOCK(seg);
       RELAY_ERROR(wp_segment_remove_label(seg, label, (docid_t)(doc_id - index->docid_offsets[i - 1])));
-      RELAY_ERROR(wp_segment_release_lock(seg));
+      END_WRITELOCK(seg);
       found = 1;
       break;
     }
@@ -457,17 +469,14 @@ wp_error* wp_index_remove_label(wp_index* index, const char* label, uint64_t doc
 wp_error* wp_index_num_docs(wp_index* index, uint64_t* num_docs) {
   *num_docs = 0;
 
-  RELAY_ERROR(grab_readlock(index));
-  RELAY_ERROR(ensure_all_segments(index));
-  RELAY_ERROR(release_lock(index));
+  SAFELY_ENSURE_ALL_SEGMENTS(index);
 
   // TODO check for overflow or some shit
   for(uint32_t i = index->num_segments; i > 0; i--) {
     wp_segment* seg = &index->segments[i - 1];
-    RELAY_ERROR(wp_segment_grab_readlock(seg));
-    RELAY_ERROR(wp_segment_reload(seg));
+    START_READLOCK(seg);
     *num_docs += wp_segment_num_docs(seg);
-    RELAY_ERROR(wp_segment_release_lock(seg));
+    END_READLOCK(seg);
   }
 
   return NO_ERROR;
