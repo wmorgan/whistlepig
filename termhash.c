@@ -106,15 +106,15 @@ wp_error* termhash_bump_size(termhash *h) {
 
   // get pointers to the old locations
   term* oldkeys = TERMHASH_KEYS(h);
-  posting_list_header* oldvals = TERMHASH_VALS(h);
+  postings_list_header* oldvals = TERMHASH_VALS(h);
 
   // set pointers to the new locations
   uint32_t* newflags = (uint32_t*)h->boundary;
   term* newkeys = (term*)(newflags + ((new_n_buckets >> 4) + 1));
-  posting_list_header* newvals = (posting_list_header*)(newkeys + new_n_buckets);
+  postings_list_header* newvals = (postings_list_header*)(newkeys + new_n_buckets);
 
   // move the vals and keys
-  memmove(newvals, oldvals, h->n_buckets * sizeof(posting_list_header));
+  memmove(newvals, oldvals, h->n_buckets * sizeof(postings_list_header));
   memmove(newkeys, oldkeys, h->n_buckets * sizeof(term));
 
   // clear the new flags
@@ -124,7 +124,7 @@ wp_error* termhash_bump_size(termhash *h) {
   for (unsigned int j = 0; j != h->n_buckets; ++j) {
     if (iseither(flagbaks, j) == 0) {
       term key = newkeys[j];
-      posting_list_header val = newvals[j];
+      postings_list_header val = newvals[j];
       set_isdel_true(flagbaks, j);
       while (1) {
         uint32_t inc, k, i;
@@ -138,7 +138,7 @@ wp_error* termhash_bump_size(termhash *h) {
         set_isempty_false(newflags, i);
         if (i < h->n_buckets && iseither(flagbaks, i) == 0) {
           { term tmp = newkeys[i]; newkeys[i] = key; key = tmp; }
-          { posting_list_header tmp = newvals[i]; newvals[i] = val; val = tmp; }
+          { postings_list_header tmp = newvals[i]; newvals[i] = val; val = tmp; }
           set_isdel_true(flagbaks, i);
         } else {
           newkeys[i] = key;
@@ -234,20 +234,20 @@ void termhash_del(termhash *h, uint32_t x) {
   }
 }
 
-posting_list_header* termhash_get_val(termhash* h, term t) {
-  posting_list_header* vals = TERMHASH_VALS(h);
+postings_list_header* termhash_get_val(termhash* h, term t) {
+  postings_list_header* vals = TERMHASH_VALS(h);
   uint32_t idx = termhash_get(h, t);
   if(idx == h->n_buckets) return NULL;
   return &vals[idx];
 }
 
-wp_error* termhash_put_val(termhash* h, term t, posting_list_header* val) {
+wp_error* termhash_put_val(termhash* h, term t, postings_list_header* val) {
   int status;
-  posting_list_header* vals = TERMHASH_VALS(h);
+  postings_list_header* vals = TERMHASH_VALS(h);
   uint32_t loc = termhash_put(h, t, &status);
   DEBUG("put(%u,%u) has status %d and loc %u (error val is %u)", t.field_s, t.word_s, status, loc, h->n_buckets);
   if(status == -1) RAISE_ERROR("out of space in hash");
-  memcpy(&vals[loc], val, sizeof(posting_list_header));
+  memcpy(&vals[loc], val, sizeof(postings_list_header));
   return NO_ERROR;
 }
 
@@ -259,19 +259,19 @@ int termhash_needs_bump(termhash* h) {
 //   memory layout: termhash struct, then:
 //   ((n_buckets >> 4) + 1) uint32_t's for the flags
 //   n_buckets terms for the keys
-//   n_buckets posting_list_header for the vals (offsets into postings lists)
+//   n_buckets postings_list_header for the vals (offsets into postings lists)
 static uint32_t size(uint32_t n_buckets) {
   uint32_t size = (uint32_t)sizeof(termhash) +
     (((n_buckets >> 4) + 1) * (uint32_t)sizeof(uint32_t)) +
     (n_buckets * (uint32_t)sizeof(term)) +
-    (n_buckets * (uint32_t)sizeof(posting_list_header));
+    (n_buckets * (uint32_t)sizeof(postings_list_header));
 
   DEBUG("size of a termhash with %u buckets is %lu + %lu + %lu + %lu = %u",
     n_buckets,
     (long)sizeof(termhash),
     (long)(((n_buckets >> 4) + 1) * sizeof(uint32_t)),
     (long)(n_buckets * sizeof(term)),
-    (long)(n_buckets * sizeof(posting_list_header)),
+    (long)(n_buckets * sizeof(postings_list_header)),
     size);
 
   return size;

@@ -187,7 +187,7 @@ RAISING_STATIC(count_query_by_running_it(wp_index* index, wp_query* query, uint3
 
 // count results by just reading it from the postings list header. a special
 // case for single-term and single-label queries that is basically a lookup.
-RAISING_STATIC(count_query_from_posting_list_header(wp_index* index, wp_query* query, uint32_t* num_results)) {
+RAISING_STATIC(count_query_from_postings_list_header(wp_index* index, wp_query* query, uint32_t* num_results)) {
   SAFELY_ENSURE_ALL_SEGMENTS(index);
 
   *num_results = 0;
@@ -211,7 +211,7 @@ RAISING_STATIC(count_query(wp_index* index, wp_query* query, uint32_t* num_resul
   switch(query->type) {
     case WP_QUERY_TERM:
     case WP_QUERY_LABEL:
-      RELAY_ERROR(count_query_from_posting_list_header(index, query, num_results));
+      RELAY_ERROR(count_query_from_postings_list_header(index, query, num_results));
       break;
     case WP_QUERY_EVERY: // TODO -- special case this
     default:
@@ -306,9 +306,7 @@ RAISING_STATIC(get_and_writelock_last_segment(wp_index* index, wp_entry* entry, 
   RELAY_ERROR(ensure_all_segments(index)); // make sure we know about all segments
   wp_segment* seg = &index->segments[index->num_segments - 1]; // get last segment
   RELAY_ERROR(wp_segment_grab_writelock(seg)); // grab the writelock
-  uint32_t postings_bytes; // calculate how much space we'll need to fit this entry in there
-  RELAY_ERROR(wp_entry_sizeof_postings_region(entry, seg, &postings_bytes));
-  RELAY_ERROR(wp_segment_ensure_fit(seg, postings_bytes, 0, &success));
+  RELAY_ERROR(wp_segment_ensure_fit(seg, entry, &success));
 
   // if we can fit in there, then return it! (still locked)
   if(success) {
@@ -342,8 +340,7 @@ RAISING_STATIC(get_and_writelock_last_segment(wp_index* index, wp_entry* entry, 
   DEBUG("loaded new segment %d at %p", index->num_segments - 1, seg);
 
   RELAY_ERROR(wp_segment_grab_writelock(seg)); // lock it
-  RELAY_ERROR(wp_entry_sizeof_postings_region(entry, seg, &postings_bytes));
-  RELAY_ERROR(wp_segment_ensure_fit(seg, postings_bytes, 0, &success));
+  RELAY_ERROR(wp_segment_ensure_fit(seg, entry, &success));
   if(!success) RAISE_ERROR("can't fit new entry into fresh segment. that's crazy");
 
   *returned_seg = seg;

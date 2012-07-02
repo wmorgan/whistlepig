@@ -1,14 +1,16 @@
-#ifndef WP_POSTING_H_
-#define WP_POSTING_H_
+#ifndef WP_TEXT_H_
+#define WP_TEXT_H_
 
-// whistlepig posting regions
+// whistlepig text posting regions
 // (c) 2011 William Morgan. See COPYING for license terms.
 //
 // this is the reading and writing code for text postings. see label.[ch]
-// for the label coe.
+// for the label code.
 
 #include "defaults.h"
-#include "mmap-obj.h"
+#include "postings_region.h"
+#include "termhash.h"
+#include "error.h"
 
 // a posting entry. used to represent postings when actively working with them.
 // the actual structure on disk/mmap memory region is encoded differently. see
@@ -40,14 +42,6 @@ typedef struct posting {
 
 #define MAX_LOGICAL_DOCID 2147483646 // don't tweak me
 
-// the header for the postings region as a whole
-typedef struct postings_region {
-  uint32_t postings_type_and_flags;
-  uint32_t num_postings;
-  uint32_t postings_head, postings_tail;
-  uint8_t postings[]; // where the postings blocks go
-} postings_region;
-
 // a postings block. stores a sequence of postings for a given term.
 // the encoding is roughly like this:
 // - these bytes are sequences of (docid, term ids for that doc id), encoded in
@@ -78,21 +72,17 @@ typedef struct postings_block {
   uint8_t data[];
 } postings_block;
 
-typedef struct segment_info {
-  uint32_t segment_version;
-  uint32_t num_docs;
-  pthread_rwlock_t lock;
-} segment_info;
+// private: initialize a text postings region
+wp_error* wp_text_postings_region_init(postings_region* pr, uint32_t initial_size) RAISES_ERROR;
 
-wp_error* postings_region_init(postings_region* pr, uint32_t initial_size) RAISES_ERROR;
-wp_error* postings_region_validate(postings_region* pr) RAISES_ERROR;
-
-// public: add a posting. be sure you've called wp_segment_ensure_fit with the
-// size of the postings list entry before doing this!
-wp_error* wp_segment_add_posting(wp_segment* s, const char* field, const char* word, docid_t doc_id, uint32_t num_positions, pos_t positions[]) RAISES_ERROR;
+// private: validate a text postings region
+wp_error* wp_text_postings_region_validate(postings_region* pr) RAISES_ERROR;
 
 // private: read a posting from the postings region at a given offset
-wp_error* wp_segment_read_posting_from_block(wp_segment* s, postings_block* block, uint32_t offset, posting* po, int include_positions) RAISES_ERROR;
+wp_error* wp_text_postings_region_read_posting_from_block(postings_region* pr, postings_block* block, uint32_t offset, posting* po, int include_positions) RAISES_ERROR;
+
+// private: add a label to an existing document
+wp_error* wp_text_postings_region_add_posting(postings_region* pr, docid_t doc_id, uint32_t num_positions, pos_t positions[], struct postings_list_header* plh) RAISES_ERROR;
 
 #endif
 

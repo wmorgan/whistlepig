@@ -1,51 +1,12 @@
-#include "whistlepig.h"
-#include "posting.h"
+#include "text.h"
 
-#define POSTINGS_REGION_TYPE_DEFAULT 1
-
-#define wp_segment_label_posting_at(posting_region, offset) ((label_posting*)(posting_region->postings + offset))
-
-static postings_list_header blank_plh = { .count = 0, .next_offset = OFFSET_NONE };
-static term dead_term = { .field_s = 0, .word_s = 0 };
-
-wp_error* postings_region_init(postings_region* pr, uint32_t initial_size) {
-  pr->postings_type_and_flags = POSTINGS_REGION_TYPE_DEFAULT;
-  pr->num_postings = 0;
-  pr->postings_head = 1; // skip one byte, which is reserved as OFFSET_NONE
-  pr->postings_tail = initial_size;
-}
-
-wp_error* postings_region_validate(postings_region* pr) {
-  if(pr->postings_type_and_flags != POSTINGS_REGION_TYPE_IMMUTABLE_VBE) RAISE_ERROR("postings region has type %u; expecting type %u", pr->postings_type_and_flags, POSTINGS_REGION_TYPE_DEFAULT);
+wp_error* wp_text_postings_region_init(postings_region* pr, uint32_t initial_size) {
+  RELAY_ERROR(wp_postings_region_init(pr, initial_size, POSTINGS_REGION_TYPE_IMMUTABLE_VBE_BLOCKS));
   return NO_ERROR;
 }
 
-// TODO share code with label_posting_region
-RAISING_STATIC(postings_region_ensure_fit(mmap_obj* mmopr, uint32_t postings_bytes, int* success)) {
-  postings_region* pr = MMAP_OBJ_PTR(mmopr, postings_region);
-  uint32_t new_head = pr->postings_head + postings_bytes;
-
-  DEBUG("ensuring fit for %u postings bytes", postings_bytes);
-
-  uint32_t new_tail = pr->postings_tail;
-  while(new_tail <= new_head) new_tail = new_tail * 2;
-
-  if(new_tail > MAX_POSTINGS_REGION_SIZE - sizeof(mmap_obj_header)) new_tail = MAX_POSTINGS_REGION_SIZE - sizeof(mmap_obj_header);
-  DEBUG("new tail will be %u, current is %u, max is %u", new_tail, pr->postings_tail, MAX_POSTINGS_REGION_SIZE);
-
-  if(new_tail <= new_head) { // can't increase enough
-    *success = 0;
-    return NO_ERROR;
-  }
-
-  if(new_tail != pr->postings_tail) { // need to resize
-    DEBUG("request for %u postings bytes, old tail is %u, new tail will be %u, max is %u\n", postings_bytes, pr->postings_tail, new_tail, MAX_POSTINGS_REGION_SIZE);
-    RELAY_ERROR(mmap_obj_resize(mmopr, new_tail));
-    pr = MMAP_OBJ_PTR(mmopr, postings_region); // may have changed!
-    pr->postings_tail = new_tail;
-  }
-
-  *success = 1;
+wp_error* wp_text_postings_region_validate(postings_region* pr) {
+  RELAY_ERROR(wp_postings_region_validate(pr, POSTINGS_REGION_TYPE_IMMUTABLE_VBE_BLOCKS));
   return NO_ERROR;
 }
 
@@ -185,7 +146,7 @@ RAISING_STATIC(add_posting_to_block(postings_block* block, posting* po)) {
  * you must free it when done (assuming num_positions > 0)!
  */
 
-wp_error* wp_segment_read_posting(wp_segment* s, uint32_t offset, posting* po, int include_positions) {
+wp_error* wp_text_postings_region_read_posting_from_block(postings_region* pr, postings_block* block, uint32_t offset, posting* po, int include_positions) {
   uint32_t size;
   uint32_t orig_offset = offset;
   postings_region* pr = MMAP_OBJ(s->postings, postings_region);
@@ -231,7 +192,7 @@ wp_error* wp_segment_read_posting(wp_segment* s, uint32_t offset, posting* po, i
   return NO_ERROR;
 }
 
-wp_error* wp_segment_add_posting(wp_segment* s, const char* field, const char* word, docid_t doc_id, uint32_t num_positions, pos_t positions[]) {
+wp_error* wp_text_postings_region_add_posting(postings_region* pr, docid_t doc_id, uint32_t num_positions, pos_t positions[], struct postings_list_header* plh) {
   int success;
   if(doc_id == 0) RAISE_ERROR("can't add doc 0");
 

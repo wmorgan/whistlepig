@@ -15,6 +15,9 @@
 typedef uint32_t docid_t;
 typedef uint32_t pos_t; // position of a term within a document
 
+#define OFFSET_NONE (uint32_t)0
+#define DOCID_NONE (docid_t)0
+
 // if you define DEBUGOUTPUT, all the DEBUG statements will magically start
 // printing stuff out...
 #ifdef DEBUGOUTPUT

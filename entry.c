@@ -126,23 +126,6 @@ wp_error* wp_entry_write_to_segment(wp_entry* entry, wp_segment* seg, docid_t do
   return NO_ERROR;
 }
 
-// currently this is a crazy overestimate (it's calculating the size without
-// VBE) but that's fine. as long as we're not an underestimate, we should be ok.
-wp_error* wp_entry_sizeof_postings_region(wp_entry* entry, wp_segment* seg, uint32_t* size) {
-  *size = 0;
-  for(khiter_t i = kh_begin(entry->entries); i < kh_end(entry->entries); i++) {
-    if(kh_exist(entry->entries, i)) {
-      RARRAY(pos_t) positions = kh_val(entry->entries, i);
-
-      uint32_t this_size;
-      RELAY_ERROR(wp_segment_sizeof_posarray(seg, RARRAY_NELEM(positions), RARRAY_ALL(positions), &this_size));
-      *size += this_size;
-    }
-  }
-
-  return NO_ERROR;
-}
-
 wp_error* wp_entry_free(wp_entry* entry) {
   for(khiter_t k = kh_begin(entry->entries); k < kh_end(entry->entries); k++) {
     if(kh_exist(entry->entries, k)) {

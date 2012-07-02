@@ -56,7 +56,4 @@ wp_error* wp_entry_free(wp_entry* entry) RAISES_ERROR;
 // private: write to a segment
 wp_error* wp_entry_write_to_segment(wp_entry* entry, struct wp_segment* seg, docid_t doc_id) RAISES_ERROR;
 
-// private: calculate the size needed for a postings region
-wp_error* wp_entry_sizeof_postings_region(wp_entry* entry, struct wp_segment* seg, uint32_t* size) RAISES_ERROR;
-
 #endif

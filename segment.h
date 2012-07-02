@@ -31,26 +31,15 @@
 typedef struct posting {
   docid_t doc_id;
   uint32_t num_positions;
-  uint32_t next_offset;
   pos_t* positions;
 } posting;
-
-// a label posting entry. currently this is also the actual representation of
-// label postings on disk.
-typedef struct label_posting {
-  docid_t doc_id;
-  uint32_t next_offset;
-} label_posting;
-
-#define OFFSET_NONE (uint32_t)0
-#define DOCID_NONE (docid_t)0
 
 // docids:
 //
 // docid 0 is reserved as a sentinel value, so the doc ids returned from this
 // segment will be between 1 and num_docs inclusive.
 //
-// docid num_docs + 1 is also a sentinel value for negative queries.  also, we
+// docid num_docs + 1 is also a sentinel value for negative queries. also, we
 // reserve one bit of each docid in the posting region as a marker for when
 // there's only one occurrence in the document (this saves us a byte for this
 // case). so the logical maximum number of docs per segment is 2^31 - 2 =
@@ -62,17 +51,33 @@ typedef struct label_posting {
 // terms also; see termhash.h.)
 
 #define MAX_LOGICAL_DOCID 2147483646 // don't tweak me
-#define MAX_POSTINGS_REGION_SIZE (256*1024*1024) // tweak me
 
 #define WP_SEGMENT_POSTING_REGION_PATH_SUFFIX "pr"
 
-// the header for the postings region
+// the header for the postings region as a whole
 typedef struct postings_region {
   uint32_t postings_type_and_flags;
   uint32_t num_postings;
   uint32_t postings_head, postings_tail;
-  uint8_t postings[]; // where the postings go yo
+  uint8_t postings[]; // where the postings blocks go
 } postings_region;
+
+// a postings block
+// reading postings blocks work like this:
+// - these bytes are sequences of (docid, term ids for that doc id), encoded in
+//   VBE encoding as deltas, with some other encoding tweaks.
+// - if you're looking for a particular doc that's greater than max_docid, you
+//   can skip to the next postings block.
+// - postings are arranged in max to min order, i.e. read order (but not write
+//   order). to read postings you need to start at postings_head bytes into the
+//   data.
+typedef struct postings_block {
+  uint32_t next_block_offset;
+  docid_t max_docid;
+  uint16_t size;
+  uint16_t postings_head;
+  uint8_t data[];
+} postings_block;
 
 typedef struct segment_info {
   uint32_t segment_version;
@@ -121,19 +126,9 @@ wp_error* wp_segment_release_lock(wp_segment* seg) RAISES_ERROR;
 // private: read a posting from the postings region at a given offset
 wp_error* wp_segment_read_posting(wp_segment* s, uint32_t offset, posting* po, int include_positions) RAISES_ERROR;
 
-// private: read a label from the label postings region at a given offset
-wp_error* wp_segment_read_label(wp_segment* s, uint32_t offset, posting* po) RAISES_ERROR;
-
 // public: add a posting. be sure you've called wp_segment_ensure_fit with the
-// size of the postings list entry before doing this! (you can obtain the size
-// by calling wp_entry_sizeof_postings_region()).
+// size of the postings list entry before doing this!
 wp_error* wp_segment_add_posting(wp_segment* s, const char* field, const char* word, docid_t doc_id, uint32_t num_positions, pos_t positions[]) RAISES_ERROR;
-
-// public: add a label to an existing document
-wp_error* wp_segment_add_label(wp_segment* s, const char* label, docid_t doc_id) RAISES_ERROR;
-
-// public: remove a label from an existing document
-wp_error* wp_segment_remove_label(wp_segment* s, const char* label, docid_t doc_id) RAISES_ERROR;
 
 // public: get a new docid
 wp_error* wp_segment_grab_docid(wp_segment* s, docid_t* docid) RAISES_ERROR;

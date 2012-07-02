@@ -196,7 +196,7 @@ static wp_error* term_init_search_state(wp_query* q, wp_segment* seg) {
   t.word_s = stringmap_string_to_int(sh, sp, q->word);
 
   uint32_t offset;
-  posting_list_header* plh = termhash_get_val(th, t);
+  postings_list_header* plh = termhash_get_val(th, t);
 
   DEBUG("posting list header for %s:%s (-> %u:%u) is %p", q->field, q->word, t.field_s, t.word_s, plh);
   if(plh == NULL) offset = OFFSET_NONE;
