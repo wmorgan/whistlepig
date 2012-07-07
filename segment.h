@@ -18,66 +18,11 @@
 #include <pthread.h>
 
 #include "defaults.h"
-#include "stringmap.h"
-#include "termhash.h"
-#include "query.h"
 #include "error.h"
-#include "search.h"
+#include "text.h" // just for segment; can move if necessary
 #include "mmap-obj.h"
 
-// a posting entry. used to represent postings when actively working with them.
-// the actual structure on disk/mmap memory region is delta- and variable-byte
-// encoded.
-typedef struct posting {
-  docid_t doc_id;
-  uint32_t num_positions;
-  pos_t* positions;
-} posting;
-
-// docids:
-//
-// docid 0 is reserved as a sentinel value, so the doc ids returned from this
-// segment will be between 1 and num_docs inclusive.
-//
-// docid num_docs + 1 is also a sentinel value for negative queries. also, we
-// reserve one bit of each docid in the posting region as a marker for when
-// there's only one occurrence in the document (this saves us a byte for this
-// case). so the logical maximum number of docs per segment is 2^31 - 2 =
-// 2,147,483,646.
-//
-// we make the segments smaller than that anyways, under the assumption that
-// this will make automatic segment loading and unloading easier, once we have
-// that implemented. (and there are limits to things like the number of unique
-// terms also; see termhash.h.)
-
-#define MAX_LOGICAL_DOCID 2147483646 // don't tweak me
-
 #define WP_SEGMENT_POSTING_REGION_PATH_SUFFIX "pr"
-
-// the header for the postings region as a whole
-typedef struct postings_region {
-  uint32_t postings_type_and_flags;
-  uint32_t num_postings;
-  uint32_t postings_head, postings_tail;
-  uint8_t postings[]; // where the postings blocks go
-} postings_region;
-
-// a postings block
-// reading postings blocks work like this:
-// - these bytes are sequences of (docid, term ids for that doc id), encoded in
-//   VBE encoding as deltas, with some other encoding tweaks.
-// - if you're looking for a particular doc that's greater than max_docid, you
-//   can skip to the next postings block.
-// - postings are arranged in max to min order, i.e. read order (but not write
-//   order). to read postings you need to start at postings_head bytes into the
-//   data.
-typedef struct postings_block {
-  uint32_t next_block_offset;
-  docid_t max_docid;
-  uint16_t size;
-  uint16_t postings_head;
-  uint8_t data[];
-} postings_block;
 
 typedef struct segment_info {
   uint32_t segment_version;

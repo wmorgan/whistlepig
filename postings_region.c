@@ -16,10 +16,10 @@ wp_error* wp_postings_region_validate(postings_region* pr, uint32_t type_and_fla
 
 wp_error* wp_postings_region_ensure_fit(mmap_obj* mmopr, uint32_t new_size, int* success) {
   postings_region* pr = MMAP_OBJ_PTR(mmopr, postings_region);
-  uint32_t new_head = pr->postings_head + new_size;
 
   DEBUG("ensuring fit for %u postings bytes", new_size);
 
+  uint32_t new_head = pr->postings_head + new_size;
   uint32_t new_tail = pr->postings_tail;
   while(new_tail <= new_head) new_tail = new_tail * 2;
 

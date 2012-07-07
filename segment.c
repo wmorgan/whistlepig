@@ -1,14 +1,15 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include "lock.h"
 #include "segment.h"
+#include "stringmap.h"
+#include "termhash.h"
+#include "postings_region.h"
+#include "label.h"
+#include "text.h"
 
-#define POSTINGS_REGION_TYPE_IMMUTABLE_VBE 1
-#define POSTINGS_REGION_TYPE_MUTABLE_NO_POSITIONS 2 // bigger, mutable
-
-#define SEGMENT_VERSION 4
-
-#define wp_segment_label_posting_at(posting_region, offset) ((label_posting*)(posting_region->postings + offset))
+#define SEGMENT_VERSION 5
 
 static postings_list_header blank_plh = { .count = 0, .next_offset = OFFSET_NONE };
 static term dead_term = { .field_s = 0, .word_s = 0 };
@@ -48,13 +49,6 @@ wp_error* wp_segment_count_term(wp_segment* seg, const char* field, const char* 
   return NO_ERROR;
 }
 
-static void postings_region_init(postings_region* pr, uint32_t initial_size, uint32_t postings_type_and_flags) {
-  pr->postings_type_and_flags = postings_type_and_flags;
-  pr->num_postings = 0;
-  pr->postings_head = 1; // skip one byte, which is reserved as OFFSET_NONE
-  pr->postings_tail = initial_size;
-}
-
 RAISING_STATIC(segment_info_init(segment_info* si, uint32_t segment_version)) {
   si->segment_version = segment_version;
   si->num_docs = 0;
@@ -65,11 +59,6 @@ RAISING_STATIC(segment_info_init(segment_info* si, uint32_t segment_version)) {
 
 RAISING_STATIC(segment_info_validate(segment_info* si, uint32_t segment_version)) {
   if(si->segment_version != segment_version) RAISE_VERSION_ERROR("segment has type %u; expecting type %u", si->segment_version, segment_version);
-  return NO_ERROR;
-}
-
-RAISING_STATIC(postings_region_validate(postings_region* pr, uint32_t postings_type_and_flags)) {
-  if(pr->postings_type_and_flags != postings_type_and_flags) RAISE_ERROR("postings region has type %u; expecting type %u", pr->postings_type_and_flags, postings_type_and_flags);
   return NO_ERROR;
 }
 
@@ -99,12 +88,12 @@ wp_error* wp_segment_load(wp_segment* segment, const char* pathname_base) {
   // open the postings region
   snprintf(fn, 128, "%s." WP_SEGMENT_POSTING_REGION_PATH_SUFFIX, pathname_base);
   RELAY_ERROR(mmap_obj_load(&segment->postings, "wp/postings", fn));
-  RELAY_ERROR(postings_region_validate(MMAP_OBJ(segment->postings, postings_region), POSTINGS_REGION_TYPE_IMMUTABLE_VBE));
+  RELAY_ERROR(wp_text_postings_region_validate(MMAP_OBJ(segment->postings, postings_region)));
 
   // open the labels postings region
   snprintf(fn, 128, "%s.lb", pathname_base);
   RELAY_ERROR(mmap_obj_load(&segment->labels, "wp/labels", fn));
-  RELAY_ERROR(postings_region_validate(MMAP_OBJ(segment->labels, postings_region), POSTINGS_REGION_TYPE_MUTABLE_NO_POSITIONS));
+  RELAY_ERROR(wp_label_postings_region_validate(MMAP_OBJ(segment->labels, postings_region)));
 
   return NO_ERROR;
 }
@@ -146,12 +135,12 @@ wp_error* wp_segment_create(wp_segment* segment, const char* pathname_base) {
   // create the postings region
   snprintf(fn, 128, "%s." WP_SEGMENT_POSTING_REGION_PATH_SUFFIX, pathname_base);
   RELAY_ERROR(mmap_obj_create(&segment->postings, "wp/postings", fn, sizeof(postings_region) + INITIAL_POSTINGS_SIZE));
-  postings_region_init(MMAP_OBJ(segment->postings, postings_region), INITIAL_POSTINGS_SIZE, POSTINGS_REGION_TYPE_IMMUTABLE_VBE);
+  RELAY_ERROR(wp_text_postings_region_init(MMAP_OBJ(segment->postings, postings_region), INITIAL_POSTINGS_SIZE));
 
   // create the labels postings region
   snprintf(fn, 128, "%s.lb", pathname_base);
   RELAY_ERROR(mmap_obj_create(&segment->labels, "wp/labels", fn, sizeof(postings_region) + INITIAL_POSTINGS_SIZE));
-  postings_region_init(MMAP_OBJ(segment->labels, postings_region), INITIAL_POSTINGS_SIZE, POSTINGS_REGION_TYPE_MUTABLE_NO_POSITIONS);
+  RELAY_ERROR(wp_label_postings_region_init(MMAP_OBJ(segment->labels, postings_region), INITIAL_POSTINGS_SIZE));
 
   return NO_ERROR;
 }
@@ -305,202 +294,6 @@ wp_error* wp_segment_ensure_fit(wp_segment* seg, uint32_t postings_bytes, uint32
   return NO_ERROR;
 }
 
-#define VALUE_BITMASK 0x7f
-RAISING_STATIC(write_uint32_vbe(uint8_t* location, uint32_t val, uint32_t* size)) {
-  //printf("xx writing %u to position %p as:\n", val, location);
-  uint8_t* start = location;
-
-  while(val > VALUE_BITMASK) {
-    uint8_t c = (val & VALUE_BITMASK) | 0x80;
-    *location = c;
-    //printf("xx %d = %d | %d at %p\n", c, val & BITMASK, 0x80, location);
-    location++;
-    val >>= 7;
-  }
-  uint8_t c = (val & VALUE_BITMASK);
-  *location = c;
-  //printf("xx %d at %p\n", c, location);
-  *size = (uint32_t)(location + 1 - start);
-  //printf("xx total %u bytes\n", *size);
-  return NO_ERROR;
-}
-
-static uint32_t sizeof_uint32_vbe(uint32_t val) {
-  uint32_t size = 1;
-
-  while(val > VALUE_BITMASK) {
-    val >>= 7;
-    size++;
-  }
-
-  return size;
-}
-
-RAISING_STATIC(read_uint32_vbe(uint8_t* location, uint32_t* val, uint32_t* size)) {
-  uint8_t* start = location;
-  uint32_t shift = 0;
-
-  *val = 0;
-  while(*location & 0x80) {
-    //printf("yy read continue byte %d -> %d at %p\n", *location, *location & ~0x80, location);
-    *val |= (*location & ~0x80) << shift;
-    shift += 7;
-    location++;
-  }
-  *val |= *location << shift;
-  //printf("yy read final byte %d at %p\n", *location, location);
-  *size = (uint32_t)(location + 1 - start);
-  //printf("yy total %d bytes, val = %d\n\n", *size, *val);
-  return NO_ERROR;
-}
-
-/* write posting entry.
-
-   the latest posting entry is always 0. rewrite this to be a delta from
-   the new posting id, and then add the new stuff.
-
-   positions are written as deltas.
-*/
-
-static uint32_t sizeof_posting(posting*);
-static uint32_t sizeof_uint32_vbe(uint32_t);
-static wp_error* write_posting(posting*, uint8_t*, uint32_t*);
-
-RAISING_STATIC(write_posting_to_block(postings_block* block, posting* po)) {
-  // basic sanity checks
-  if(po->num_positions == 0) RAISE_ERROR("num_positions == 0");
-  if(po->positions == NULL) RAISE_ERROR("positions is null");
-  if(po->doc_id <= block->max_docid) RAISE_ERROR("doc_id is <= current max_docid"); // should always be adding larger docids
-
-  // calculate size of posting + rewritten docid.
-  // format will be:
-  // - cur_docid (encoded as 0 since it's delta max_docid, which will be updated to be this value)
-  // - if # positions > 1
-  // -   # positions
-  // -   positions, delta-encoded
-  // - old cur_docid, re-encoded as delta cur_docid (currently 0, delta the old max_docid)
-
-  uint32_t cur_posting_size = sizeof_posting(po); // gonna write this
-  uint32_t prev_docid_size = sizeof_uint32_vbe(po->doc_id - block->max_docid); // gonna rewrite this from 0
-  uint32_t total_size = cur_posting_size + prev_docid_size - 1; // minus 1 for the single-byte docids that's to be rewritten
-  uint32_t remaining_bytes = block->postings_head; // easy enough
-
-  if(remaining_bytes < total_size) RAISE_ERROR("not enough space to write posting");
-
-  // now write everything
-  uint8_t* start = &block->data[block->postings_head - total_size];
-  uint32_t size;
-  RELAY_ERROR(write_posting(po, start, &size));
-  start += size;
-  RELAY_ERROR(write_uint32_vbe(start, po->doc_id - block->max_docid, &size));
-
-  // update max_docid for this block
-  block->max_docid = po->doc_id;
-
-  // and we're done
-  return NO_ERROR;
-}
-
-// write a posting
-RAISING_STATIC(write_posting(posting* po, uint8_t* target, uint32_t* total_size)) {
-  uint32_t size;
-  uint8_t* start = target;
-
-  uint32_t doc_id = po->doc_id << 1;
-  if(po->num_positions == 1) doc_id |= 1; // marker for single postings
-  RELAY_ERROR(write_uint32_vbe(target, doc_id, &size));
-  target += size;
-  //printf("wrote %u-byte doc_id %u (np1 == %d)\n", size, doc_id, po->num_positions == 1 ? 1 : 0);
-
-  if(po->num_positions > 1) {
-    RELAY_ERROR(write_uint32_vbe(target, po->num_positions, &size));
-    target += size;
-    //printf("wrote %u-byte num positions %u\n", size, po->num_positions);
-  }
-
-  for(uint32_t i = 0; i < po->num_positions; i++) {
-    RELAY_ERROR(write_uint32_vbe(target, po->positions[i] - (i == 0 ? 0 : po->positions[i - 1]), &size));
-    target += size;
-    //printf("wrote %u-byte positions %u\n", size, positions[i] - (i == 0 ? 0 : positions[i - 1]));
-  }
-
-  *total_size = (target - start);
-
-  //printf("done writing posting\n\n");
-
-  //printf(">>> done writing posting %d %d %d to %p\n\n", (prev_docid == 0 ? po->doc_id : prev_docid - po->doc_id), offset - po->next_offset, po->num_positions, &pr->postings[pl->postings_head]);
-
-  return NO_ERROR;
-}
-
-static uint32_t sizeof_posting(posting* po) {
-  uint32_t size = 0;
-
-  uint32_t doc_id = po->doc_id << 1;
-  if(po->num_positions == 1) doc_id |= 1; // marker for single postings
-  size += sizeof_uint32_vbe(po->doc_id);
-
-  if(po->num_positions > 1) {
-    size += sizeof_uint32_vbe(po->num_positions);
-  }
-
-  for(uint32_t i = 0; i < po->num_positions; i++) {
-    size += sizeof_uint32_vbe(po->positions[i] - (i == 0 ? 0 : po->positions[i - 1]));
-  }
-
-  return size;
-}
-
-/* if include_positions is true, will malloc the positions array for you, and
- * you must free it when done (assuming num_positions > 0)!
- */
-
-wp_error* wp_segment_read_posting(wp_segment* s, uint32_t offset, posting* po, int include_positions) {
-  uint32_t size;
-  uint32_t orig_offset = offset;
-  postings_region* pr = MMAP_OBJ(s->postings, postings_region);
-
-  //DEBUG("reading posting from offset %u -> %p (pr %p base %p)", offset, &pr->postings[offset], pr, &pr->postings);
-
-  RELAY_ERROR(read_uint32_vbe(&pr->postings[offset], &po->doc_id, &size));
-  int is_single_posting = po->doc_id & 1;
-  po->doc_id = po->doc_id >> 1;
-  //DEBUG("read doc_id %u (%u bytes)", po->doc_id, size);
-  offset += size;
-
-  RELAY_ERROR(read_uint32_vbe(&pr->postings[offset], &po->next_offset, &size));
-  //DEBUG("read next_offset %u -> %u (%u bytes)", po->next_offset, orig_offset - po->next_offset, size);
-  if((po->next_offset == 0) || (po->next_offset > orig_offset)) RAISE_ERROR("read invalid next_offset %u (must be > 0 and < %u)", po->next_offset, orig_offset);
-  po->next_offset = orig_offset - po->next_offset;
-  offset += size;
-
-  if(include_positions) {
-    if(is_single_posting) po->num_positions = 1;
-    else {
-      RELAY_ERROR(read_uint32_vbe(&pr->postings[offset], &po->num_positions, &size));
-      //DEBUG("read num_positions: %u (%u bytes)", po->num_positions, size);
-      offset += size;
-    }
-
-    po->positions = malloc(po->num_positions * sizeof(pos_t));
-
-    for(uint32_t i = 0; i < po->num_positions; i++) {
-      RELAY_ERROR(read_uint32_vbe(&pr->postings[offset], &po->positions[i], &size));
-      offset += size;
-      po->positions[i] += (i == 0 ? 0 : po->positions[i - 1]);
-      //DEBUG("read position %u (%u bytes)", po->positions[i], size);
-    }
-  }
-  else {
-    po->num_positions = 0;
-    po->positions = NULL;
-  }
-  //DEBUG("total record took %u bytes", offset - orig_offset);
-  //printf("*** read posting %u %u %u from %u\n", po->doc_id, po->next_offset, po->num_positions, orig_offset);
-
-  return NO_ERROR;
-}
-
 wp_error* wp_segment_add_posting(wp_segment* s, const char* field, const char* word, docid_t doc_id, uint32_t num_positions, pos_t positions[]) {
   int success;
   if(doc_id == 0) RAISE_ERROR("can't add doc 0");
@@ -524,7 +317,7 @@ wp_error* wp_segment_add_posting(wp_segment* s, const char* field, const char* w
 
   DEBUG("%s:%s maps to %u:%u", field, word, t.field_s, t.word_s);
 
-  // find the offset of the next posting
+  // find the posting-list header
   postings_list_header* plh = termhash_get_val(th, t);
   if(plh == NULL) {
     RELAY_ERROR(termhash_put_val(th, t, &blank_plh));
@@ -533,55 +326,12 @@ wp_error* wp_segment_add_posting(wp_segment* s, const char* field, const char* w
   DEBUG("posting list header for %s:%s is at %p", field, word, plh);
 
   posting po;
-  uint32_t next_offset = plh->next_offset;
-
-  if(next_offset != OFFSET_NONE) { // TODO remove this check for speed once happy [PERFORMANCE]
-    RELAY_ERROR(wp_segment_read_posting(s, next_offset, &po, 0));
-    if(po.doc_id >= doc_id) RAISE_ERROR("cannot add a doc_id out of sorted order");
-  }
-
-  // write the entry to the postings region
-  uint32_t entry_offset = pr->postings_head;
-  DEBUG("writing posting at offset %u. next offset is %u.", entry_offset, next_offset);
-
   po.doc_id = doc_id;
-  po.next_offset = next_offset;
   po.num_positions = num_positions;
   po.positions = positions;
-  RELAY_ERROR(write_posting_to_block(s, &po, positions)); // prev_docid is 0 for th
-  DEBUG("posting list head now at %u", pr->postings_head);
 
-  // really finally, update the tail pointer so that readers can access this posting
-  plh->count++;
-  plh->next_offset = entry_offset;
-  DEBUG("posting list header for %s:%s now reads count=%u offset=%u", field, word, plh->count, plh->next_offset);
-
-  return NO_ERROR;
-}
-
-/*
- * currently, labels are implemented as a separate postings space and separate
- * postings structure, but with the same term hash (the offsets just are
- * relative to the different space).
- *
- * we use the sentinel field value 0 to demarcate a label. since no strings have
- * have stringmap value 0, this is safe.
- *
- * we also maintain a free list of unused label postings. since all label
- * postings are the same size, we can do this to reuse them and avoid losing
- * space in this area; since label postings can be changed frequently, this is
- * desirable. we use the sentinel postings value field=0 word=0 to keep track
- * of this list.
- *
-*/
-wp_error* wp_segment_read_label(wp_segment* s, uint32_t offset, posting* po) {
-  postings_region* pr = MMAP_OBJ(s->labels, postings_region);
-
-  label_posting* lp = wp_segment_label_posting_at(pr, offset);
-  po->doc_id = lp->doc_id;
-  po->next_offset = lp->next_offset;
-  po->num_positions = 0;
-  po->positions = NULL;
+  // TODO handle resize exceptions
+  RELAY_ERROR(wp_text_postings_region_add_posting(pr, &po, plh));
 
   return NO_ERROR;
 }
@@ -617,30 +367,6 @@ wp_error* wp_segment_add_label(wp_segment* s, const char* label, docid_t doc_id)
     plh = termhash_get_val(th, t);
   }
 
-  uint32_t next_offset = plh->next_offset;
-  docid_t last_docid = DOCID_NONE;
-  uint32_t prev_offset = OFFSET_NONE;
-
-  DEBUG("start offset is %u (none is %u)", next_offset, OFFSET_NONE);
-
-  while(next_offset != OFFSET_NONE) {
-    label_posting* lp = wp_segment_label_posting_at(pr, next_offset);
-
-    if((last_docid != DOCID_NONE) && (lp->doc_id >= last_docid))
-      RAISE_ERROR("whistlepig index corruption! lp %u has docid %u but last docid at lp %u was %u", next_offset, lp->doc_id, prev_offset, last_docid);
-    else
-      last_docid = lp->doc_id;
-
-    DEBUG("got doc id %u next_offset %u at offset %u (looking for doc id %u)", lp->doc_id, lp->next_offset, next_offset, doc_id);
-    if(lp->doc_id == doc_id) {
-      DEBUG("already have label '%s' for doc %u; returning", label, doc_id);
-      return NO_ERROR;
-    }
-    else if(lp->doc_id < doc_id) break;
-    prev_offset = next_offset;
-    next_offset = lp->next_offset;
-  }
-
   // find a space for the posting by first checking for a free postings in the
   // dead list. the dead list is the list stored under the sentinel term with
   // field 0 and word 0.
@@ -650,33 +376,7 @@ wp_error* wp_segment_add_label(wp_segment* s, const char* label, docid_t doc_id)
     dead_plh = termhash_get_val(th, t);
   }
 
-  uint32_t entry_offset;
-  uint32_t dead_offset = dead_plh->next_offset;
-
-  if(dead_offset == OFFSET_NONE) { // make a new posting
-    entry_offset = pr->postings_head;
-  }
-  else { // we'll use this one; remove it from the linked list
-    DEBUG("offset from dead list is %u, using it for the new posting!", dead_offset);
-    entry_offset = dead_plh->next_offset;
-    dead_plh->next_offset = wp_segment_label_posting_at(pr, dead_offset)->next_offset;
-    dead_plh->count--;
-  }
-
-  // finally, write the entry to the label postings region
-  DEBUG("label entry will be at offset %u, prev offset is %u and next offset is %u", entry_offset, prev_offset, next_offset);
-  label_posting* po = wp_segment_label_posting_at(pr, entry_offset);
-  po->doc_id = doc_id;
-  po->next_offset = next_offset;
-
-  pr->postings_head += (uint32_t)sizeof(label_posting);
-  DEBUG("label posting list head now at %u", pr->postings_head);
-
-  // really finally, update either the previous offset or the tail pointer
-  // for this label so that readers can access this posting
-  plh->count++;
-  if(prev_offset == OFFSET_NONE) plh->next_offset = entry_offset;
-  else wp_segment_label_posting_at(pr, prev_offset)->next_offset = entry_offset;
+  RELAY_ERROR(wp_label_postings_region_add_label(pr, doc_id, plh, dead_plh));
 
   return NO_ERROR;
 }
@@ -699,56 +399,20 @@ wp_error* wp_segment_remove_label(wp_segment* s, const char* label, docid_t doc_
   t.word_s = stringmap_string_to_int(sh, sp, label); // will be -1 if not there
 
   // find the posting and the previous posting in the list, if any
-  docid_t last_docid = DOCID_NONE;
-  uint32_t prev_offset = OFFSET_NONE;
   postings_list_header* plh = termhash_get_val(th, t);
   if(plh == NULL) {
     DEBUG("no such label %s", label);
     return NO_ERROR;
   }
 
-  uint32_t offset = plh->next_offset;
-  label_posting* lp = NULL;
-  while(offset != OFFSET_NONE) {
-    lp = wp_segment_label_posting_at(pr, offset);
-
-    if((last_docid != DOCID_NONE) && (lp->doc_id >= last_docid)) {
-      RAISE_ERROR("whistlepig index corruption! lp %u has docid %u but last docid at lp %u was %u", offset, lp->doc_id, prev_offset, last_docid);
-    }
-    else {
-      last_docid = lp->doc_id;
-    }
-
-    if(lp->doc_id < doc_id) offset = OFFSET_NONE; // nasty hack to induce failure
-    if(lp->doc_id <= doc_id) break;
-    prev_offset = offset;
-    offset = lp->next_offset;
-  }
-
-  DEBUG("found label posting for doc %u at offset %u; prev_offset is %u", doc_id, offset, prev_offset);
-
-  if(offset == OFFSET_NONE) {
-    DEBUG("no label %s found for doc %u", label, doc_id);
-    return NO_ERROR;
-  }
-
-  // we've found the posting; now remove it from the list
-  if(prev_offset == OFFSET_NONE) plh->next_offset = lp->next_offset;
-  else wp_segment_label_posting_at(pr, prev_offset)->next_offset = lp->next_offset;
-  plh->count--;
-
-  // now add it to the dead list for later reclamation
+  // get the dead list for later reclamation
   postings_list_header* dead_plh = termhash_get_val(th, dead_term);
   if(dead_plh == NULL) {
     RELAY_ERROR(termhash_put_val(th, dead_term, &blank_plh));
     dead_plh = termhash_get_val(th, t);
   }
 
-  DEBUG("adding dead label posting %u to head of deadlist with next_offset %u", offset, lp->next_offset);
-
-  uint32_t dead_offset = dead_plh->next_offset;
-  lp->next_offset = dead_offset;
-  dead_plh->next_offset = offset;
+  RELAY_ERROR(wp_label_postings_region_remove_label(pr, doc_id, plh, dead_plh));
 
   return NO_ERROR;
 }

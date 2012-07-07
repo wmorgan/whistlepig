@@ -108,67 +108,171 @@ RAISING_STATIC(write_posting(posting* po, uint8_t* target, uint32_t* total_size)
 
 // add a posting to a postings_block
 RAISING_STATIC(add_posting_to_block(postings_block* block, posting* po)) {
+  DEBUG("going to add a posting for doc %u with %u positions to the block at %p", po->doc_id, po->num_positions, block);
+  DEBUG("block has min_docid %u and max_docid %u", block->min_docid, block->max_docid);
+
   // basic sanity checks
   if(po->num_positions == 0) RAISE_ERROR("num_positions == 0");
   if(po->positions == NULL) RAISE_ERROR("positions is null");
-  if(po->doc_id <= block->max_docid) RAISE_ERROR("doc_id is <= current max_docid"); // should always be adding larger docids
 
-  // calculate size of posting + rewritten docid.
-  // format will be:
-  // - cur_docid (encoded as 0 since it's delta max_docid, which will be updated to be this value)
-  // - if # positions > 1
-  // -   # positions
-  // -   positions, delta-encoded
-  // - old cur_docid, re-encoded as delta cur_docid (currently 0, delta the old max_docid)
+  // we're going to replace the doc_id with 0 for the rest of this
+  // function, since that's what we'll actually be writing.
 
-  uint32_t cur_posting_size = sizeof_posting(po); // gonna write this
-  uint32_t prev_docid_size = sizeof_uint32_vbe(po->doc_id - block->max_docid); // gonna rewrite this from 0
-  uint32_t total_size = cur_posting_size + prev_docid_size - 1; // minus 1 for the single-byte docids that's to be rewritten
-  uint32_t remaining_bytes = block->postings_head; // easy enough
+  docid_t doc_id = po->doc_id;
+  po->doc_id = 0;
+  uint8_t* start = &block->data[block->postings_head];
 
-  if(remaining_bytes < total_size) RAISE_ERROR("not enough space to write posting");
+  uint32_t cur_posting_size = sizeof_posting(po);
+  DEBUG("posting will be %u bytes. block has %u bytes remaining.", cur_posting_size, block->postings_head);
 
-  // now write everything
-  uint8_t* start = &block->data[block->postings_head - total_size];
-  uint32_t size;
-  RELAY_ERROR(write_posting(po, start, &size));
-  start += size;
-  RELAY_ERROR(write_uint32_vbe(start, po->doc_id - block->max_docid, &size));
+  if(block->max_docid == 0) {
+    DEBUG("max_docid is 0, so this is the first posting in this block");
+    if(block->postings_head < cur_posting_size) RAISE_ERROR("not enough space to write posting");
+    block->max_docid = block->min_docid = doc_id;
+    start -= cur_posting_size;
 
-  // update max_docid for this block
-  block->max_docid = po->doc_id;
+    uint32_t size;
+    RELAY_ERROR(write_posting(po, start, &size));
+    if(size != cur_posting_size) RAISE_ERROR("size mismatch"); // sanity check
+    block->postings_head -= cur_posting_size;
+    DEBUG("rewound postings head by %u bytes", size);
+  }
+  else {
+    DEBUG("going to add an additional posting to this block");
+
+    if(doc_id <= block->max_docid) RAISE_ERROR("doc_id is <= current max_docid"); // should always be adding larger docids
+
+    // calculate size of posting + rewritten docid.
+    // format will be:
+    // - cur_docid (encoded as 0 since it's delta max_docid, which will be updated to be this value)
+    // - if # positions > 1
+    // -   # positions
+    // -   positions, delta-encoded
+    // - old cur_docid, re-encoded as delta cur_docid (currently 0, delta the old max_docid)
+
+    uint32_t prev_docid_size = sizeof_uint32_vbe(doc_id - block->max_docid); // gonna rewrite this from 0
+    uint32_t total_size = cur_posting_size + prev_docid_size - 1; // minus 1 for the single-byte docids that's to be rewritten
+    if(block->postings_head < total_size) RAISE_ERROR("not enough space to write posting");
+
+    // now write everything
+    block->postings_head -= total_size;
+    uint32_t size;
+    RELAY_ERROR(write_posting(po, start, &size));
+    start += size;
+    RELAY_ERROR(write_uint32_vbe(start, po->doc_id - block->max_docid, &size));
+    start += size;
+
+    if(start != &block->data[block->postings_head]) RAISE_ERROR("size mismatch");
+    block->max_docid = po->doc_id;
+  }
+
+  // undo our change just in case (kinda lame)
+  po->doc_id = doc_id;
 
   // and we're done
   return NO_ERROR;
 }
 
+#define MIN_BLOCK_SIZE 32
+RAISING_STATIC(build_new_block(postings_region* pr, uint32_t min_size, uint32_t old_offset, uint32_t* new_offset)) {
+  DEBUG("going to make a new block to hold %u bytes", min_size);
+
+  // bump up size to be greater than the previous block, if any
+  if(old_offset != OFFSET_NONE) {
+    postings_block* old_block = wp_postings_block_at(pr, old_offset);
+    if(old_block->size > min_size) min_size = old_block->size;
+    DEBUG("previous block for this posting is %u bytes", old_block->size);
+  }
+
+  uint32_t new_size = MIN_BLOCK_SIZE;
+  while(new_size < min_size) new_size *= 2;
+
+  DEBUG("making a new block of %u + %u = %u bytes", new_size, sizeof(postings_block), new_size + sizeof(postings_block));
+  new_size += sizeof(postings_block);
+
+  if((pr->postings_tail - pr->postings_head) < new_size) {
+    DEBUG("*** only have %u bytes in this postings region left. unwinding so that we can resize and retry!", pr->postings_tail - pr->postings_head);
+    RAISE_RESIZE_ERROR(RESIZE_ERROR_POSTINGS_REGION, new_size);
+  }
+
+  *new_offset = pr->postings_head;
+  pr->postings_head += new_size;
+
+  DEBUG("new block will be at offset %u and will have %u bytes for postings", *new_offset, new_size - sizeof(postings_block));
+  postings_block* block = wp_postings_block_at(pr, *new_offset);
+  block->prev_block_offset = old_offset;
+  block->size = new_size - sizeof(postings_block);
+  block->postings_head = block->size;
+  block->min_docid = 0;
+  block->max_docid = 0;
+
+  return NO_ERROR;
+}
+
+// add the posting to a block, adding a block as necessary,
+wp_error* wp_text_postings_region_add_posting(postings_region* pr, posting* po, struct postings_list_header* plh) {
+  if(po->doc_id == 0) RAISE_ERROR("can't add doc 0");
+
+  // first, let's get a block to hold this posting
+  uint32_t posting_size = sizeof_posting(po);
+  postings_block* block = NULL;
+
+  DEBUG("want to add posting of %u bytes", postings_size);
+
+  // do we have one we can use already?
+  if(plh->next_offset != OFFSET_NONE) {
+    if((plh->next_offset > pr->postings_head) || (plh->next_offset < pr->postings_tail)) RAISE_ERROR("plh offset out of bounds: %u not in (%u, %u)", plh->next_offset, pr->postings_tail, pr->postings_head); // sanity check
+    block = wp_postings_block_at(pr, plh->next_offset);
+  }
+
+  // do we need to make a new one?
+  if((block == NULL) || (block->postings_head < posting_size)) {
+    if(block) DEBUG("block at %u has only %u bytes left. need to make a new one!", plh->next_offset, block->postings_head);
+    else DEBUG("no block for this postings list. going to make a new one!");
+
+    uint32_t new_offset = OFFSET_NONE;
+    RELAY_ERROR(build_new_block(pr, posting_size, plh->next_offset, &new_offset));
+    block = wp_postings_block_at(pr, new_offset);
+    // set the pointer to the new block
+    plh->next_offset = new_offset;
+  }
+
+  // finally we have a block, so let's add the posting!
+  RELAY_ERROR(add_posting_to_block(block, po));
+
+  // congrats, a new posting
+  plh->count++;
+
+  return NO_ERROR;
+}
+
 /* if include_positions is true, will malloc the positions array for you, and
  * you must free it when done (assuming num_positions > 0)!
+ *
+ * will update next_offset to the offset of the next posting. if this is
+ * >= block->size, you're done with this block and should move on to the next one.
+ *
+ * note that docids will be returned in delta form, so you must subtract them
+ * from the previous docid returned from this block to get the actual docid!
+ * if this is the first posting in the block, subtract from max_id (the
+ * delta should be 0).
  */
-
-wp_error* wp_text_postings_region_read_posting_from_block(postings_region* pr, postings_block* block, uint32_t offset, posting* po, int include_positions) {
+wp_error* wp_text_postings_region_read_posting_from_block(postings_region* pr, postings_block* block, uint32_t offset, uint32_t* next_offset, posting* po, int include_positions) {
+  (void)pr;
   uint32_t size;
-  uint32_t orig_offset = offset;
-  postings_region* pr = MMAP_OBJ(s->postings, postings_region);
 
-  //DEBUG("reading posting from offset %u -> %p (pr %p base %p)", offset, &pr->postings[offset], pr, &pr->postings);
+  //DEBUG("reading posting from offset %u -> %p (pr %p base %p)", offset, &pr->data[offset], pr, &pr->data);
 
-  RELAY_ERROR(read_uint32_vbe(&pr->postings[offset], &po->doc_id, &size));
+  RELAY_ERROR(read_uint32_vbe(&block->data[offset], &po->doc_id, &size));
   int is_single_posting = po->doc_id & 1;
   po->doc_id = po->doc_id >> 1;
   //DEBUG("read doc_id %u (%u bytes)", po->doc_id, size);
   offset += size;
 
-  RELAY_ERROR(read_uint32_vbe(&pr->postings[offset], &po->next_offset, &size));
-  //DEBUG("read next_offset %u -> %u (%u bytes)", po->next_offset, orig_offset - po->next_offset, size);
-  if((po->next_offset == 0) || (po->next_offset > orig_offset)) RAISE_ERROR("read invalid next_offset %u (must be > 0 and < %u)", po->next_offset, orig_offset);
-  po->next_offset = orig_offset - po->next_offset;
-  offset += size;
-
   if(include_positions) {
     if(is_single_posting) po->num_positions = 1;
     else {
-      RELAY_ERROR(read_uint32_vbe(&pr->postings[offset], &po->num_positions, &size));
+      RELAY_ERROR(read_uint32_vbe(&block->data[offset], &po->num_positions, &size));
       //DEBUG("read num_positions: %u (%u bytes)", po->num_positions, size);
       offset += size;
     }
@@ -176,7 +280,7 @@ wp_error* wp_text_postings_region_read_posting_from_block(postings_region* pr, p
     po->positions = malloc(po->num_positions * sizeof(pos_t));
 
     for(uint32_t i = 0; i < po->num_positions; i++) {
-      RELAY_ERROR(read_uint32_vbe(&pr->postings[offset], &po->positions[i], &size));
+      RELAY_ERROR(read_uint32_vbe(&block->data[offset], &po->positions[i], &size));
       offset += size;
       po->positions[i] += (i == 0 ? 0 : po->positions[i - 1]);
       //DEBUG("read position %u (%u bytes)", po->positions[i], size);
@@ -186,66 +290,10 @@ wp_error* wp_text_postings_region_read_posting_from_block(postings_region* pr, p
     po->num_positions = 0;
     po->positions = NULL;
   }
+
+  *next_offset = offset;
   //DEBUG("total record took %u bytes", offset - orig_offset);
   //printf("*** read posting %u %u %u from %u\n", po->doc_id, po->next_offset, po->num_positions, orig_offset);
-
-  return NO_ERROR;
-}
-
-wp_error* wp_text_postings_region_add_posting(postings_region* pr, docid_t doc_id, uint32_t num_positions, pos_t positions[], struct postings_list_header* plh) {
-  int success;
-  if(doc_id == 0) RAISE_ERROR("can't add doc 0");
-
-  // TODO move this logic up to ensure_fit()
-  RELAY_ERROR(bump_stringmap(s, &success));
-  RELAY_ERROR(bump_stringpool(s, &success));
-  RELAY_ERROR(bump_termhash(s, &success));
-
-  DEBUG("adding posting for %s:%s and doc %u with %u positions", field, word, doc_id, num_positions);
-
-  postings_region* pr = MMAP_OBJ(s->postings, postings_region);
-  stringmap* sh = MMAP_OBJ(s->stringmap, stringmap);
-  termhash* th = MMAP_OBJ(s->termhash, termhash);
-  stringpool* sp = MMAP_OBJ(s->stringpool, stringpool);
-
-  // construct the term object
-  term t;
-  RELAY_ERROR(stringmap_add(sh, sp, field, &t.field_s));
-  RELAY_ERROR(stringmap_add(sh, sp, word, &t.word_s));
-
-  DEBUG("%s:%s maps to %u:%u", field, word, t.field_s, t.word_s);
-
-  // find the offset of the next posting
-  postings_list_header* plh = termhash_get_val(th, t);
-  if(plh == NULL) {
-    RELAY_ERROR(termhash_put_val(th, t, &blank_plh));
-    plh = termhash_get_val(th, t);
-  }
-  DEBUG("posting list header for %s:%s is at %p", field, word, plh);
-
-  posting po;
-  uint32_t next_offset = plh->next_offset;
-
-  if(next_offset != OFFSET_NONE) { // TODO remove this check for speed once happy [PERFORMANCE]
-    RELAY_ERROR(wp_segment_read_posting(s, next_offset, &po, 0));
-    if(po.doc_id >= doc_id) RAISE_ERROR("cannot add a doc_id out of sorted order");
-  }
-
-  // write the entry to the postings region
-  uint32_t entry_offset = pr->postings_head;
-  DEBUG("writing posting at offset %u. next offset is %u.", entry_offset, next_offset);
-
-  po.doc_id = doc_id;
-  po.next_offset = next_offset;
-  po.num_positions = num_positions;
-  po.positions = positions;
-  RELAY_ERROR(write_posting_to_block(s, &po, positions)); // prev_docid is 0 for th
-  DEBUG("posting list head now at %u", pr->postings_head);
-
-  // really finally, update the tail pointer so that readers can access this posting
-  plh->count++;
-  plh->next_offset = entry_offset;
-  DEBUG("posting list header for %s:%s now reads count=%u offset=%u", field, word, plh->count, plh->next_offset);
 
   return NO_ERROR;
 }

@@ -16,7 +16,11 @@
 
 #define MAX_POSTINGS_REGION_SIZE (256*1024*1024) // tweak me
 
-// the header for the label postings region as a whole
+// the header for the label postings region as a whole.
+// data sits in postings[].
+// the valid region for new stuff is between postings_head and postings_tail.
+// the valid region for existing stuff is between 1 and postings_head.
+// we waste one byte at the beginning of postings[] to have a valid OFFSET_NONE.
 typedef struct postings_region {
   uint32_t postings_type_and_flags;
   uint32_t num_postings;
@@ -25,7 +29,6 @@ typedef struct postings_region {
 } postings_region;
 
 // all private
-
 wp_error* wp_postings_region_init(postings_region* pr, uint32_t initial_size, uint32_t type_and_flags) RAISES_ERROR;
 wp_error* wp_postings_region_validate(postings_region* pr, uint32_t type_and_flags) RAISES_ERROR;
 wp_error* wp_postings_region_ensure_fit(mmap_obj* mmopr, uint32_t new_size, int* success) RAISES_ERROR;

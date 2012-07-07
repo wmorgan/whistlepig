@@ -15,6 +15,7 @@
 #include "segment.h"
 #include "error.h"
 #include "entry.h"
+#include "query.h"
 
 #define WP_MAX_SEGMENTS 65534 // max value of wp_search_query->segment_idx - 2 because we need two special numbers
 
@@ -35,7 +36,6 @@ typedef struct index_info {
   uint32_t num_segments;
   pthread_rwlock_t lock; // global r/w lock
 } index_info;
-
 
 // API methods
 

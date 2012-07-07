@@ -3,7 +3,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include "whistlepig.h"
+#include "index.h"
+#include "search.h"
+#include "lock.h"
 
 #define PATH_BUF_SIZE 4096
 #define INDEX_VERSION 1

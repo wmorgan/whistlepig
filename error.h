@@ -23,11 +23,13 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <string.h>
 
 #define WP_ERROR_TYPE_BASIC 1
 #define WP_ERROR_TYPE_SYSTEM 2
 #define WP_ERROR_TYPE_VERSION 3
+#define WP_ERROR_TYPE_RESIZE 4
 
 // pseudo-backtrace
 typedef struct wp_error {
@@ -35,7 +37,15 @@ typedef struct wp_error {
   unsigned int size;
   const char* msg;
   const char** srcs;
+  void* data;
 } wp_error;
+
+// data for resize signals
+#define RESIZE_ERROR_POSTINGS_REGION 1
+typedef struct wp_resize_error_data {
+  uint8_t what;
+  uint32_t size;
+} wp_resize_error_data;
 
 // for functions
 #define RAISES_ERROR __attribute__ ((warn_unused_result))
@@ -44,7 +54,7 @@ typedef struct wp_error {
 // API methods
 
 // private: make a new error object with a message and source line
-wp_error* wp_error_new(const char* msg, const char* src, unsigned char type) RAISES_ERROR;
+wp_error* wp_error_new(const char* msg, const char* src, unsigned char type, void* data) RAISES_ERROR;
 // private: add a source line to a pre-existing error
 wp_error* wp_error_chain(wp_error* e, const char* src) RAISES_ERROR;
 
@@ -52,22 +62,30 @@ wp_error* wp_error_chain(wp_error* e, const char* src) RAISES_ERROR;
 void wp_error_free(wp_error* e);
 
 // private: internal mechanics for raising an error
-#define RAISE_ERROR_OF_TYPE(type, fmt, ...) do { \
+#define RAISE_ERROR_OF_TYPE(type, data, fmt, ...) do { \
   char* msg = malloc(1024); \
   char* src = malloc(1024); \
   snprintf(msg, 1024, fmt, ## __VA_ARGS__); \
   snprintf(src, 1024, "%s (%s:%d)", __PRETTY_FUNCTION__, __FILE__, __LINE__); \
-  return wp_error_new(msg, src, type); \
+  return wp_error_new(msg, src, type, data); \
 } while(0)
 
 // public: raise a basic error
-#define RAISE_ERROR(fmt, ...) RAISE_ERROR_OF_TYPE(WP_ERROR_TYPE_BASIC, fmt, ## __VA_ARGS__)
+#define RAISE_ERROR(fmt, ...) RAISE_ERROR_OF_TYPE(WP_ERROR_TYPE_BASIC, NULL, fmt, ## __VA_ARGS__)
 
 // public: raise a version error
-#define RAISE_VERSION_ERROR(fmt, ...) RAISE_ERROR_OF_TYPE(WP_ERROR_TYPE_VERSION, fmt, ## __VA_ARGS__)
+#define RAISE_VERSION_ERROR(fmt, ...) RAISE_ERROR_OF_TYPE(WP_ERROR_TYPE_VERSION, NULL, fmt, ## __VA_ARGS__)
+
+// private: raise a resize "error" (more of a signal)
+#define RAISE_RESIZE_ERROR(_what, _size) do { \
+  wp_resize_error_data* _data = malloc(sizeof(wp_resize_error_data)); \
+  _data->what = _what; \
+  _data->size = _size; \
+  RAISE_ERROR_OF_TYPE(WP_ERROR_TYPE_RESIZE, _data, "resize %u/%u", _what, _size); \
+} while(0)
 
 // public: raise a system error with strerror() automatically appended to the message
-#define RAISE_SYSERROR(fmt, ...) RAISE_ERROR_OF_TYPE(WP_ERROR_TYPE_SYSTEM, fmt ": %s", ## __VA_ARGS__, strerror(errno))
+#define RAISE_SYSERROR(fmt, ...) RAISE_ERROR_OF_TYPE(WP_ERROR_TYPE_SYSTEM, NULL, fmt ": %s", ## __VA_ARGS__, strerror(errno))
 
 // public: relay an error up the stack if the called function returns one.
 #define RELAY_ERROR(e) do { \

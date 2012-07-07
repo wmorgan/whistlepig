@@ -1,5 +1,8 @@
 #include <stdio.h>
 #include "whistlepig.h"
+#include "text.h"
+#include "label.h"
+#include "stringmap.h"
 
 #define isempty(flag, i) ((flag[i>>4]>>((i&0xfU)<<1))&2)
 #define isdel(flag, i) ((flag[i>>4]>>((i&0xfU)<<1))&1)
@@ -10,37 +13,49 @@ RAISING_STATIC(dump_postings_list(wp_segment* s, postings_list_header* plh)) {
   docid_t last_doc_id = 0;
   int started = 0;
 
-  uint32_t offset = plh->next_offset;
+  postings_region* pr = MMAP_OBJ(s->postings, postings_region);
+
+  uint32_t block_offset = plh->next_offset;
   printf("[%u entries]\n", plh->count);
 
-  while(offset != OFFSET_NONE) {
-    RELAY_ERROR(wp_segment_read_posting(s, offset, &po, 1));
+  while(block_offset != OFFSET_NONE) {
+    postings_block* block = wp_postings_block_at(pr, block_offset);
+    uint32_t posting_offset = block->postings_head;
 
-    printf("  @%u doc %u:", offset, po.doc_id);
-    for(uint32_t i = 0; i < po.num_positions; i++) printf(" %d", po.positions[i]);
+    while(posting_offset < block->size) {
+      uint32_t next_posting_offset = OFFSET_NONE;
+      RELAY_ERROR(wp_text_postings_region_read_posting_from_block(pr, block, posting_offset, &next_posting_offset, &po, 1));
 
-    if((po.doc_id == 0) || (started && (po.doc_id >= last_doc_id))) printf(" <-- BROKEN");
-    started = 1;
-    last_doc_id = po.doc_id;
-    printf("\n");
+      printf("  [block %u] @%u doc %u:", block_offset, posting_offset, po.doc_id);
+      for(uint32_t i = 0; i < po.num_positions; i++) printf(" %d", po.positions[i]);
 
-    offset = po.next_offset;
-    free(po.positions);
+      if((po.doc_id == 0) || (started && (po.doc_id >= last_doc_id))) printf(" <-- BROKEN");
+      started = 1;
+      last_doc_id = po.doc_id;
+      printf("\n");
+
+      posting_offset = next_posting_offset;
+      free(po.positions);
+    }
+
+    block_offset = block->prev_block_offset;
   }
 
   return NO_ERROR;
 }
 
 RAISING_STATIC(dump_label_postings_list(wp_segment* s, postings_list_header* plh)) {
-  posting po;
+  label_posting po;
   docid_t last_doc_id = 0;
   int started = 0;
+
+  postings_region* lpr = MMAP_OBJ(s->labels, postings_region);
 
   uint32_t offset = plh->next_offset;
   printf("[%u entries]\n", plh->count);
 
   while(offset != OFFSET_NONE) {
-    RELAY_ERROR(wp_segment_read_label(s, offset, &po));
+    RELAY_ERROR(wp_label_postings_region_read_label(lpr, offset, &po));
 
     printf("  @%u doc %u", offset, po.doc_id);
     if((po.doc_id == 0) || (started && (po.doc_id >= last_doc_id))) printf(" <-- BROKEN");
@@ -49,7 +64,6 @@ RAISING_STATIC(dump_label_postings_list(wp_segment* s, postings_list_header* plh
     printf("\n");
 
     offset = po.next_offset;
-    free(po.positions);
   }
 
   return NO_ERROR;

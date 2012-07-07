@@ -24,7 +24,7 @@ CCOPT= $(CFLAGS) $(CCLINK) $(ARCH) $(PROF)
 DEBUG?= -rdynamic -ggdb
 
 TESTFILES = test-segment.c test-stringmap.c test-stringpool.c test-termhash.c test-search.c test-labels.c test-tokenizer.c test-queries.c test-snippets.c
-CSRCFILES = segment.c termhash.c stringmap.c error.c query.c search.c stringpool.c mmap-obj.c query-parser.c index.c entry.c lock.c snippeter.c label.c posting.c postings_region.c
+CSRCFILES = segment.c termhash.c stringmap.c error.c query.c search.c stringpool.c mmap-obj.c query-parser.c index.c entry.c lock.c snippeter.c label.c text.c postings_region.c
 HEADERFILES = $(CSRCFILES:.c=.h) defaults.h whistlepig.h khash.h rarray.h
 LEXFILES = tokenizer.lex query-parser.lex
 YFILES = query-parser.y
@@ -48,108 +48,91 @@ loc: $(CSRCFILES) $(LEXFILES) $(YFILES) $(HEADERFILES)
 
 ## deps (use `make dep` to generate this (in vi: :r !make dep)
 batch-run-queries.o: batch-run-queries.c whistlepig.h defaults.h index.h \
- segment.h stringmap.h stringpool.h error.h termhash.h query.h search.h \
- mmap-obj.h entry.h khash.h rarray.h query-parser.h lock.h timer.h
+ segment.h error.h text.h postings_region.h mmap-obj.h termhash.h entry.h \
+ khash.h rarray.h query.h query-parser.h lock.h snippeter.h timer.h
 benchmark-queries.o: benchmark-queries.c whistlepig.h defaults.h index.h \
- segment.h stringmap.h stringpool.h error.h termhash.h query.h search.h \
- mmap-obj.h entry.h khash.h rarray.h query-parser.h lock.h timer.h
-dump.o: dump.c whistlepig.h defaults.h index.h segment.h stringmap.h \
- stringpool.h error.h termhash.h query.h search.h mmap-obj.h entry.h \
- khash.h rarray.h query-parser.h lock.h
-entry.o: entry.c whistlepig.h defaults.h index.h segment.h stringmap.h \
- stringpool.h error.h termhash.h query.h search.h mmap-obj.h entry.h \
- khash.h rarray.h query-parser.h lock.h tokenizer.lex.h
+ segment.h error.h text.h postings_region.h mmap-obj.h termhash.h entry.h \
+ khash.h rarray.h query.h query-parser.h lock.h snippeter.h timer.h
+dump.o: dump.c whistlepig.h defaults.h index.h segment.h error.h text.h \
+ postings_region.h mmap-obj.h termhash.h entry.h khash.h rarray.h query.h \
+ query-parser.h lock.h snippeter.h
+entry.o: entry.c whistlepig.h defaults.h index.h segment.h error.h text.h \
+ postings_region.h mmap-obj.h termhash.h entry.h khash.h rarray.h query.h \
+ query-parser.h lock.h snippeter.h tokenizer.lex.h
 error.o: error.c error.h
 file-indexer.o: file-indexer.c timer.h whistlepig.h defaults.h index.h \
- segment.h stringmap.h stringpool.h error.h termhash.h query.h search.h \
- mmap-obj.h entry.h khash.h rarray.h query-parser.h lock.h
-index.o: index.c whistlepig.h defaults.h index.h segment.h stringmap.h \
- stringpool.h error.h termhash.h query.h search.h mmap-obj.h entry.h \
- khash.h rarray.h query-parser.h lock.h
+ segment.h error.h text.h postings_region.h mmap-obj.h termhash.h entry.h \
+ khash.h rarray.h query.h query-parser.h lock.h snippeter.h
+index.o: index.c index.h defaults.h segment.h error.h text.h \
+ postings_region.h mmap-obj.h termhash.h entry.h khash.h rarray.h query.h \
+ search.h lock.h
 interactive.o: interactive.c whistlepig.h defaults.h index.h segment.h \
- stringmap.h stringpool.h error.h termhash.h query.h search.h mmap-obj.h \
- entry.h khash.h rarray.h query-parser.h lock.h timer.h
+ error.h text.h postings_region.h mmap-obj.h termhash.h entry.h khash.h \
+ rarray.h query.h query-parser.h lock.h snippeter.h timer.h
 label.o: label.c label.h defaults.h postings_region.h error.h mmap-obj.h \
  termhash.h
-lock.o: lock.c whistlepig.h defaults.h index.h segment.h stringmap.h \
- stringpool.h error.h termhash.h query.h search.h mmap-obj.h entry.h \
- khash.h rarray.h query-parser.h lock.h
+lock.o: lock.c whistlepig.h defaults.h index.h segment.h error.h text.h \
+ postings_region.h mmap-obj.h termhash.h entry.h khash.h rarray.h query.h \
+ query-parser.h lock.h snippeter.h
 make-queries.o: make-queries.c tokenizer.lex.h segment.h defaults.h \
- stringmap.h stringpool.h error.h termhash.h query.h search.h mmap-obj.h
+ error.h text.h postings_region.h mmap-obj.h termhash.h
 mbox-indexer.o: mbox-indexer.c whistlepig.h defaults.h index.h segment.h \
- stringmap.h stringpool.h error.h termhash.h query.h search.h mmap-obj.h \
- entry.h khash.h rarray.h query-parser.h lock.h timer.h
-mmap-obj.o: mmap-obj.c whistlepig.h defaults.h index.h segment.h \
- stringmap.h stringpool.h error.h termhash.h query.h search.h mmap-obj.h \
- entry.h khash.h rarray.h query-parser.h lock.h
-posting.o: posting.c whistlepig.h defaults.h index.h segment.h \
- stringmap.h stringpool.h error.h termhash.h query.h search.h mmap-obj.h \
- entry.h khash.h rarray.h query-parser.h lock.h posting.h
+ error.h text.h postings_region.h mmap-obj.h termhash.h entry.h khash.h \
+ rarray.h query.h query-parser.h lock.h snippeter.h timer.h
+mmap-obj.o: mmap-obj.c whistlepig.h defaults.h index.h segment.h error.h \
+ text.h postings_region.h mmap-obj.h termhash.h entry.h khash.h rarray.h \
+ query.h query-parser.h lock.h snippeter.h
 postings_region.o: postings_region.c postings_region.h defaults.h error.h \
  mmap-obj.h
 query-parser.o: query-parser.c whistlepig.h defaults.h index.h segment.h \
- stringmap.h stringpool.h error.h termhash.h query.h search.h mmap-obj.h \
- entry.h khash.h rarray.h query-parser.h lock.h query-parser.tab.h
+ error.h text.h postings_region.h mmap-obj.h termhash.h entry.h khash.h \
+ rarray.h query.h query-parser.h lock.h snippeter.h query-parser.tab.h
 query-parser.lex.o: query-parser.lex.c whistlepig.h defaults.h index.h \
- segment.h stringmap.h stringpool.h error.h termhash.h query.h search.h \
- mmap-obj.h entry.h khash.h rarray.h query-parser.h lock.h \
+ segment.h error.h text.h postings_region.h mmap-obj.h termhash.h entry.h \
+ khash.h rarray.h query.h query-parser.h lock.h snippeter.h \
  query-parser.tab.h
 query-parser.tab.o: query-parser.tab.c query.h segment.h defaults.h \
- stringmap.h stringpool.h error.h termhash.h search.h mmap-obj.h \
- query-parser.h query-parser.tab.h
-query.o: query.c whistlepig.h defaults.h index.h segment.h stringmap.h \
- stringpool.h error.h termhash.h query.h search.h mmap-obj.h entry.h \
- khash.h rarray.h query-parser.h lock.h
-search.o: search.c whistlepig.h defaults.h index.h segment.h stringmap.h \
- stringpool.h error.h termhash.h query.h search.h mmap-obj.h entry.h \
- khash.h rarray.h query-parser.h lock.h
-segment.o: segment.c segment.h defaults.h stringmap.h stringpool.h \
- error.h termhash.h query.h search.h mmap-obj.h
+ error.h text.h postings_region.h mmap-obj.h termhash.h query-parser.h \
+ query-parser.tab.h
+query.o: query.c whistlepig.h defaults.h index.h segment.h error.h text.h \
+ postings_region.h mmap-obj.h termhash.h entry.h khash.h rarray.h query.h \
+ query-parser.h lock.h snippeter.h
+search.o: search.c search.h defaults.h segment.h error.h text.h \
+ postings_region.h mmap-obj.h termhash.h query.h stringmap.h stringpool.h
+segment.o: segment.c lock.h error.h segment.h defaults.h text.h \
+ postings_region.h mmap-obj.h termhash.h stringmap.h stringpool.h label.h
 snippeter.o: snippeter.c whistlepig.h defaults.h index.h segment.h \
- stringmap.h stringpool.h error.h termhash.h query.h search.h mmap-obj.h \
- entry.h khash.h rarray.h query-parser.h lock.h tokenizer.lex.h
-stringmap.o: stringmap.c whistlepig.h defaults.h index.h segment.h \
- stringmap.h stringpool.h error.h termhash.h query.h search.h mmap-obj.h \
- entry.h khash.h rarray.h query-parser.h lock.h
-stringpool.o: stringpool.c whistlepig.h defaults.h index.h segment.h \
- stringmap.h stringpool.h error.h termhash.h query.h search.h mmap-obj.h \
- entry.h khash.h rarray.h query-parser.h lock.h
-termhash.o: termhash.c whistlepig.h defaults.h index.h segment.h \
- stringmap.h stringpool.h error.h termhash.h query.h search.h mmap-obj.h \
- entry.h khash.h rarray.h query-parser.h lock.h
-test-labels.o: test-labels.c test.h query.h segment.h defaults.h \
- stringmap.h stringpool.h error.h termhash.h search.h mmap-obj.h \
- query-parser.h index.h entry.h khash.h rarray.h
-test-labels_main.o: test-labels_main.c error.h test.h
+ error.h text.h postings_region.h mmap-obj.h termhash.h entry.h khash.h \
+ rarray.h query.h query-parser.h lock.h snippeter.h tokenizer.lex.h
+stringmap.o: stringmap.c stringmap.h stringpool.h error.h defaults.h
+stringpool.o: stringpool.c defaults.h stringpool.h
+termhash.o: termhash.c termhash.h error.h defaults.h
+test-labels.o: test-labels.c test.h query.h segment.h defaults.h error.h \
+ text.h postings_region.h mmap-obj.h termhash.h query-parser.h index.h \
+ entry.h khash.h rarray.h
 test-queries.o: test-queries.c test.h query.h segment.h defaults.h \
- stringmap.h stringpool.h error.h termhash.h search.h mmap-obj.h \
- query-parser.h
-test-queries_main.o: test-queries_main.c error.h test.h
-test-search.o: test-search.c test.h query.h segment.h defaults.h \
- stringmap.h stringpool.h error.h termhash.h search.h mmap-obj.h \
- query-parser.h index.h entry.h khash.h rarray.h
-test-search_main.o: test-search_main.c error.h test.h
-test-segment.o: test-segment.c test.h segment.h defaults.h stringmap.h \
- stringpool.h error.h termhash.h query.h search.h mmap-obj.h \
- tokenizer.lex.h index.h entry.h khash.h rarray.h
-test-segment_main.o: test-segment_main.c error.h test.h
+ error.h text.h postings_region.h mmap-obj.h termhash.h query-parser.h
+test-search.o: test-search.c test.h query.h segment.h defaults.h error.h \
+ text.h postings_region.h mmap-obj.h termhash.h query-parser.h index.h \
+ entry.h khash.h rarray.h
+test-segment.o: test-segment.c test.h segment.h defaults.h error.h text.h \
+ postings_region.h mmap-obj.h termhash.h tokenizer.lex.h query.h index.h \
+ entry.h khash.h rarray.h
 test-snippets.o: test-snippets.c test.h whistlepig.h defaults.h index.h \
- segment.h stringmap.h stringpool.h error.h termhash.h query.h search.h \
- mmap-obj.h entry.h khash.h rarray.h query-parser.h lock.h
+ segment.h error.h text.h postings_region.h mmap-obj.h termhash.h entry.h \
+ khash.h rarray.h query.h query-parser.h lock.h snippeter.h
 test-stringmap.o: test-stringmap.c stringmap.h stringpool.h error.h \
  test.h
 test-stringpool.o: test-stringpool.c stringpool.h error.h test.h
-test-stringpool_main.o: test-stringpool_main.c error.h test.h
 test-termhash.o: test-termhash.c termhash.h error.h test.h
-test-termhash_main.o: test-termhash_main.c error.h test.h
 test-tokenizer.o: test-tokenizer.c test.h tokenizer.lex.h segment.h \
- defaults.h stringmap.h stringpool.h error.h termhash.h query.h search.h \
- mmap-obj.h
-test-tokenizer_main.o: test-tokenizer_main.c error.h test.h
-tokenizer.lex.o: tokenizer.lex.c segment.h defaults.h stringmap.h \
- stringpool.h error.h termhash.h query.h search.h mmap-obj.h
-benchmark-queries: benchmark-queries.o $(OBJ)
+ defaults.h error.h text.h postings_region.h mmap-obj.h termhash.h
+text.o: text.c text.h defaults.h postings_region.h error.h mmap-obj.h \
+ termhash.h
+tokenizer.lex.o: tokenizer.lex.c segment.h defaults.h error.h text.h \
+ postings_region.h mmap-obj.h termhash.h
 
+benchmark-queries: benchmark-queries.o $(OBJ)
 	@$(ECHO) LINK $@
 	@$(CC) -o $@ $(CCOPT) $(DEBUG) $+
 

@@ -1,4 +1,6 @@
-#include "whistlepig.h"
+#include <string.h>
+#include "defaults.h"
+#include "stringpool.h"
 
 void stringpool_init(stringpool* p) {
   p->next = 1;

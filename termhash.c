@@ -1,4 +1,5 @@
-#include "whistlepig.h"
+#include "termhash.h"
+#include "defaults.h"
 
 static const int HASH_PRIME_SIZE = 32;
 

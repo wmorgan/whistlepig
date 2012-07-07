@@ -27,13 +27,6 @@ typedef struct postings_list_header {
   uint32_t next_offset;
 } postings_list_header;
 
-typedef struct block_header {
-  uint32_t max_docid;
-  uint32_t next_offset;
-  uint32_t block_start;
-  uint8_t data[];
-} block_header;
-
 #define INITIAL_N_BUCKETS_IDX 1
 
 typedef struct termhash {

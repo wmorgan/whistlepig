@@ -1,11 +1,22 @@
-#include "whistlepig.h"
+#include "search.h"
+#include "stringmap.h"
+#include "termhash.h"
+#include "text.h"
+#include "label.h"
 
 /********* search states *********/
-typedef struct term_search_state {
-  posting posting;
+typedef struct label_search_state {
+  label_posting posting;
   int started;
   int done;
-  int label; // 1 if a label; 0 if a term
+} label_search_state;
+
+typedef struct term_search_state {
+  posting posting;
+  uint32_t next_posting_offset;
+  uint32_t block_offset;
+  int started;
+  int done;
 } term_search_state;
 
 typedef struct neg_search_state {
@@ -31,18 +42,23 @@ void wp_search_result_free(search_result* result) {
   free(result->doc_matches);
 }
 
-RAISING_STATIC(search_result_init(search_result* result, const char* field, const char* word, posting* posting)) {
-  result->doc_id = posting->doc_id;
+RAISING_STATIC(search_result_init(search_result* result, const char* field, const char* word, docid_t doc_id, uint32_t num_positions, pos_t* positions)) {
+  result->doc_id = doc_id;
   result->num_doc_matches = 1;
   result->doc_matches = malloc(sizeof(doc_match));
   result->doc_matches[0].field = field;
   result->doc_matches[0].word = word;
-  result->doc_matches[0].num_positions = posting->num_positions;
+  result->doc_matches[0].num_positions = num_positions;
 
-  size_t size = sizeof(pos_t) * posting->num_positions;
-  result->doc_matches[0].positions = malloc(size);
-  //printf("for result at %p, allocated %u bytes for positions at %p\n", result, size, result->doc_matches[0].positions);
-  memcpy(result->doc_matches[0].positions, posting->positions, size);
+  if(num_positions == 0) {
+    result->doc_matches[0].positions = NULL;
+  }
+  else {
+    size_t size = sizeof(pos_t) * num_positions;
+    result->doc_matches[0].positions = malloc(size);
+    //printf("for result at %p, allocated %u bytes for positions at %p\n", result, size, result->doc_matches[0].positions);
+    memcpy(result->doc_matches[0].positions, positions, size);
+  }
 
   return NO_ERROR;
 }
@@ -92,24 +108,28 @@ RAISING_STATIC(search_result_combine_into(search_result* result, search_result* 
 
 /********** dispatch functions ***********/
 static wp_error* term_init_search_state(wp_query* q, wp_segment* s) RAISES_ERROR;
+static wp_error* label_init_search_state(wp_query* q, wp_segment* s) RAISES_ERROR;
 static wp_error* conj_init_search_state(wp_query* q, wp_segment* s) RAISES_ERROR;
 static wp_error* disj_init_search_state(wp_query* q, wp_segment* s) RAISES_ERROR;
 static wp_error* phrase_init_search_state(wp_query* q, wp_segment* s) RAISES_ERROR;
 static wp_error* neg_init_search_state(wp_query* q, wp_segment* s) RAISES_ERROR;
 static wp_error* every_init_search_state(wp_query* q, wp_segment* s) RAISES_ERROR;
 static wp_error* term_release_search_state(wp_query* q) RAISES_ERROR;
+static wp_error* label_release_search_state(wp_query* q) RAISES_ERROR;
 static wp_error* conj_release_search_state(wp_query* q) RAISES_ERROR;
 static wp_error* disj_release_search_state(wp_query* q) RAISES_ERROR;
 static wp_error* phrase_release_search_state(wp_query* q) RAISES_ERROR;
 static wp_error* neg_release_search_state(wp_query* q) RAISES_ERROR;
 static wp_error* every_release_search_state(wp_query* q) RAISES_ERROR;
 static wp_error* term_next_doc(wp_query* q, wp_segment* s, search_result* result, int* done) RAISES_ERROR;
+static wp_error* label_next_doc(wp_query* q, wp_segment* s, search_result* result, int* done) RAISES_ERROR;
 static wp_error* conj_next_doc(wp_query* q, wp_segment* s, search_result* result, int* done) RAISES_ERROR;
 static wp_error* disj_next_doc(wp_query* q, wp_segment* s, search_result* result, int* done) RAISES_ERROR;
 static wp_error* phrase_next_doc(wp_query* q, wp_segment* s, search_result* result, int* done) RAISES_ERROR;
 static wp_error* neg_next_doc(wp_query* q, wp_segment* s, search_result* result, int* done) RAISES_ERROR;
 static wp_error* every_next_doc(wp_query* q, wp_segment* s, search_result* result, int* done) RAISES_ERROR;
 static wp_error* term_advance_to_doc(wp_query* q, wp_segment* s, docid_t doc_id, search_result* result, int* found, int* done) RAISES_ERROR;
+static wp_error* label_advance_to_doc(wp_query* q, wp_segment* s, docid_t doc_id, search_result* result, int* found, int* done) RAISES_ERROR;
 static wp_error* conj_advance_to_doc(wp_query* q, wp_segment* s, docid_t doc_id, search_result* result, int* found, int* done) RAISES_ERROR;
 static wp_error* disj_advance_to_doc(wp_query* q, wp_segment* s, docid_t doc_id, search_result* result, int* found, int* done) RAISES_ERROR;
 static wp_error* phrase_advance_to_doc(wp_query* q, wp_segment* s, docid_t doc_id, search_result* result, int* found, int* done) RAISES_ERROR;
@@ -120,8 +140,8 @@ static wp_error* every_advance_to_doc(wp_query* q, wp_segment* s, docid_t doc_id
 // we use conj for empty queries as well (why not)
 #define DISPATCH(type, suffix, ...) \
   switch(type) { \
-    case WP_QUERY_TERM: \
-    case WP_QUERY_LABEL: RELAY_ERROR(term_##suffix(__VA_ARGS__)); break; \
+    case WP_QUERY_TERM: RELAY_ERROR(term_##suffix(__VA_ARGS__)); break; \
+    case WP_QUERY_LABEL: RELAY_ERROR(label_##suffix(__VA_ARGS__)); break; \
     case WP_QUERY_EMPTY: \
     case WP_QUERY_CONJ: RELAY_ERROR(conj_##suffix(__VA_ARGS__)); break; \
     case WP_QUERY_DISJ: RELAY_ERROR(disj_##suffix(__VA_ARGS__)); break; \
@@ -180,24 +200,21 @@ RAISING_STATIC(release_children(wp_query* q)) {
   return NO_ERROR;
 }
 
-static wp_error* term_init_search_state(wp_query* q, wp_segment* seg) {
+static wp_error* label_init_search_state(wp_query* q, wp_segment* seg) {
   term t;
+
   stringmap* sh = MMAP_OBJ(seg->stringmap, stringmap);
   termhash* th = MMAP_OBJ(seg->termhash, termhash);
   stringpool* sp = MMAP_OBJ(seg->stringpool, stringpool);
 
-  term_search_state* state = q->search_data = malloc(sizeof(term_search_state));
+  label_search_state* state = q->search_data = malloc(sizeof(label_search_state));
   state->started = 0;
 
-  state->label = q->type == WP_QUERY_LABEL ? 1 : 0;
-  if(state->label) t.field_s = 0;
-  else t.field_s = stringmap_string_to_int(sh, sp, q->field); // will be -1 if not found
-
+  t.field_s = 0;
   t.word_s = stringmap_string_to_int(sh, sp, q->word);
 
   uint32_t offset;
   postings_list_header* plh = termhash_get_val(th, t);
-
   DEBUG("posting list header for %s:%s (-> %u:%u) is %p", q->field, q->word, t.field_s, t.word_s, plh);
   if(plh == NULL) offset = OFFSET_NONE;
   else offset = plh->next_offset;
@@ -207,8 +224,47 @@ static wp_error* term_init_search_state(wp_query* q, wp_segment* seg) {
   if(offset == OFFSET_NONE) state->done = 1; // no entry in term hash
   else {
     state->done = 0;
-    if(state->label) RELAY_ERROR(wp_segment_read_label(seg, offset, &state->posting));
-    else RELAY_ERROR(wp_segment_read_posting(seg, offset, &state->posting, 1));
+    postings_region* lpr = MMAP_OBJ(seg->labels, postings_region);
+    RELAY_ERROR(wp_label_postings_region_read_label(lpr, offset, &state->posting));
+  }
+
+  RELAY_ERROR(init_children(q, seg));
+
+  return NO_ERROR;
+}
+
+static wp_error* term_init_search_state(wp_query* q, wp_segment* seg) {
+  term t;
+
+  stringmap* sh = MMAP_OBJ(seg->stringmap, stringmap);
+  termhash* th = MMAP_OBJ(seg->termhash, termhash);
+  stringpool* sp = MMAP_OBJ(seg->stringpool, stringpool);
+
+  term_search_state* state = q->search_data = malloc(sizeof(term_search_state));
+  state->started = 0;
+
+  t.field_s = stringmap_string_to_int(sh, sp, q->field); // will be -1 if not found
+  t.word_s = stringmap_string_to_int(sh, sp, q->word);
+
+  uint32_t offset;
+  postings_list_header* plh = termhash_get_val(th, t);
+  DEBUG("posting list header for %s:%s (-> %u:%u) is %p", q->field, q->word, t.field_s, t.word_s, plh);
+  if(plh == NULL) offset = OFFSET_NONE;
+  else offset = plh->next_offset;
+
+  if(plh) DEBUG("posting list header has count=%u next_offset=%u", plh->count, plh->next_offset);
+
+  if(offset == OFFSET_NONE) state->done = 1; // no entry in term hash
+  else {
+    postings_region* pr = MMAP_OBJ(seg->postings, postings_region);
+
+    state->done = 0;
+    state->block_offset = offset;
+    postings_block* block = wp_postings_block_at(pr, offset);
+
+    // blocks are guaranteed to have one posting, so we can go ahead and read
+    // one without worrying about being done with the block
+    RELAY_ERROR(wp_text_postings_region_read_posting_from_block(pr, block, block->postings_head, &state->next_posting_offset, &state->posting, 1));
   }
 
   RELAY_ERROR(init_children(q, seg));
@@ -313,6 +369,35 @@ static wp_error* every_release_search_state(wp_query* q) {
 }
 
 /********** search functions **********/
+
+static wp_error* label_next_doc(wp_query* q, wp_segment* seg, search_result* result, int* done) {
+  label_search_state* state = (label_search_state*)q->search_data;
+
+  DEBUG("[%s:'%s'] before: started is %d, done is %d", q->field, q->word, state->started, state->done);
+  if(state->done) {
+    *done = 1;
+    return NO_ERROR;
+  }
+
+  *done = 0;
+  if(!state->started) { // start
+    state->started = 1;
+    RELAY_ERROR(search_result_init(result, q->field, q->word, state->posting.doc_id, 0, NULL));
+  }
+  else { // advance
+    if(state->posting.next_offset == OFFSET_NONE) { // end of stream
+      *done = state->done = 1;
+    }
+    else {
+      postings_region* lpr = MMAP_OBJ(seg->labels, postings_region);
+      RELAY_ERROR(wp_label_postings_region_read_label(lpr, state->posting.next_offset, &state->posting));
+      RELAY_ERROR(search_result_init(result, q->field, q->word, &state->posting));
+    }
+  }
+  DEBUG("[%s:'%s'] after: doc id %u, done is %d, started is %d", q->field, q->word, (state->started && !state->done && result) ? result->doc_id : 0, *done, state->started);
+
+  return NO_ERROR;
+}
 
 static wp_error* term_next_doc(wp_query* q, wp_segment* s, search_result* result, int* done) {
   term_search_state* state = (term_search_state*)q->search_data;

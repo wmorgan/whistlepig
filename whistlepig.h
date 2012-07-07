@@ -13,8 +13,6 @@
 #include "lock.h"
 #include "error.h"
 #include "rarray.h"
-
-// see comments in index.c
-char* strdup(const char* old);
+#include "snippeter.h"
 
 #endif

@@ -55,7 +55,7 @@ typedef struct posting {
 // - so, if you're looking for a particular doc that's less than min_docid,
 //   you can just skip to the previous postings block.
 // - within a block, postings are stored max-to-min order, so reads go forward
-//   in memory. unused space is at  the beginning of the block. all reads
+//   in memory. unused space is at the beginning of the block. all reads
 //   should start at postings_head.
 //
 // example:
@@ -66,11 +66,15 @@ typedef struct posting {
 // <- is the prev_block_offset pointer, and left to right is order in memory.
 typedef struct postings_block {
   uint32_t prev_block_offset;
+  docid_t max_docid;
   docid_t min_docid;
-  uint16_t size;
+  uint16_t size; // not including the postings_block header
   uint16_t postings_head;
   uint8_t data[];
 } postings_block;
+
+// private
+#define wp_postings_block_at(postings_region, offset) ((postings_block*)((postings_region) + (offset)))
 
 // private: initialize a text postings region
 wp_error* wp_text_postings_region_init(postings_region* pr, uint32_t initial_size) RAISES_ERROR;
@@ -79,10 +83,10 @@ wp_error* wp_text_postings_region_init(postings_region* pr, uint32_t initial_siz
 wp_error* wp_text_postings_region_validate(postings_region* pr) RAISES_ERROR;
 
 // private: read a posting from the postings region at a given offset
-wp_error* wp_text_postings_region_read_posting_from_block(postings_region* pr, postings_block* block, uint32_t offset, posting* po, int include_positions) RAISES_ERROR;
+wp_error* wp_text_postings_region_read_posting_from_block(postings_region* pr, postings_block* block, uint32_t offset, uint32_t* next_offset, posting* po, int include_positions) RAISES_ERROR;
 
 // private: add a label to an existing document
-wp_error* wp_text_postings_region_add_posting(postings_region* pr, docid_t doc_id, uint32_t num_positions, pos_t positions[], struct postings_list_header* plh) RAISES_ERROR;
+wp_error* wp_text_postings_region_add_posting(postings_region* pr, posting* po, struct postings_list_header* plh) RAISES_ERROR;
 
 #endif
 
