@@ -263,6 +263,9 @@ wp_error* wp_text_postings_region_read_posting_from_block(postings_region* pr, p
 
   //DEBUG("reading posting from offset %u -> %p (pr %p base %p)", offset, &pr->data[offset], pr, &pr->data);
 
+  if(offset < block->postings_head) RAISE_ERROR("too-small offset: %u vs %u", offset, block->postings_head);
+  if(offset >= block->size) RAISE_ERROR("too-large offset: %u vs %u", offset, block->size);
+
   RELAY_ERROR(read_uint32_vbe(&block->data[offset], &po->doc_id, &size));
   int is_single_posting = po->doc_id & 1;
   po->doc_id = po->doc_id >> 1;

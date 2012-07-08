@@ -136,7 +136,6 @@ static wp_error* phrase_advance_to_doc(wp_query* q, wp_segment* s, docid_t doc_i
 static wp_error* neg_advance_to_doc(wp_query* q, wp_segment* s, docid_t doc_id, search_result* result, int* found, int* done) RAISES_ERROR;
 static wp_error* every_advance_to_doc(wp_query* q, wp_segment* s, docid_t doc_id, search_result* result, int* found, int* done) RAISES_ERROR;
 
-// the term_* functions also handle labels
 // we use conj for empty queries as well (why not)
 #define DISPATCH(type, suffix, ...) \
   switch(type) { \
@@ -280,6 +279,14 @@ static wp_error* term_release_search_state(wp_query* q) {
   return NO_ERROR;
 }
 
+static wp_error* label_release_search_state(wp_query* q) {
+  term_search_state* state = q->search_data;
+  if(!state->done) free(state->posting.positions);
+  free(state);
+  RELAY_ERROR(release_children(q));
+  return NO_ERROR;
+}
+
 static wp_error* conj_init_search_state(wp_query* q, wp_segment* s) {
   q->search_data = NULL; // no state needed
   RELAY_ERROR(init_children(q, s));
@@ -391,7 +398,7 @@ static wp_error* label_next_doc(wp_query* q, wp_segment* seg, search_result* res
     else {
       postings_region* lpr = MMAP_OBJ(seg->labels, postings_region);
       RELAY_ERROR(wp_label_postings_region_read_label(lpr, state->posting.next_offset, &state->posting));
-      RELAY_ERROR(search_result_init(result, q->field, q->word, &state->posting));
+      RELAY_ERROR(search_result_init(result, q->field, q->word, state->posting.doc_id, 0, NULL));
     }
   }
   DEBUG("[%s:'%s'] after: doc id %u, done is %d, started is %d", q->field, q->word, (state->started && !state->done && result) ? result->doc_id : 0, *done, state->started);
@@ -399,7 +406,7 @@ static wp_error* label_next_doc(wp_query* q, wp_segment* seg, search_result* res
   return NO_ERROR;
 }
 
-static wp_error* term_next_doc(wp_query* q, wp_segment* s, search_result* result, int* done) {
+static wp_error* term_next_doc(wp_query* q, wp_segment* seg, search_result* result, int* done) {
   term_search_state* state = (term_search_state*)q->search_data;
 
   DEBUG("[%s:'%s'] before: started is %d, done is %d", q->field, q->word, state->started, state->done);
@@ -411,26 +418,110 @@ static wp_error* term_next_doc(wp_query* q, wp_segment* s, search_result* result
   *done = 0;
   if(!state->started) { // start
     state->started = 1;
-    RELAY_ERROR(search_result_init(result, q->field, q->word, &state->posting));
+    RELAY_ERROR(search_result_init(result, q->field, q->word, state->posting.doc_id, state->posting.num_positions, state->posting.positions));
   }
   else { // advance
     free(state->posting.positions);
-    if(state->posting.next_offset == OFFSET_NONE) { // end of stream
+
+    if(state->block_offset == OFFSET_NONE) {
       *done = state->done = 1;
     }
     else {
-      if(state->label) RELAY_ERROR(wp_segment_read_label(s, state->posting.next_offset, &state->posting));
-      else RELAY_ERROR(wp_segment_read_posting(s, state->posting.next_offset, &state->posting, 1));
-      RELAY_ERROR(search_result_init(result, q->field, q->word, &state->posting));
+      postings_region* pr = MMAP_OBJ(seg->postings, postings_region);
+      postings_block* block = wp_postings_block_at(pr, state->block_offset);
+
+      if(state->next_posting_offset >= block->size) { // need to move to the next block, if any
+        state->block_offset = block->prev_block_offset;
+        if(state->block_offset == OFFSET_NONE) {
+          *done = state->done = 1;
+        }
+        else {
+          block = wp_postings_block_at(pr, state->block_offset);
+          state->next_posting_offset = block->postings_head;
+        }
+      }
+
+      if(!*done) {
+        RELAY_ERROR(wp_text_postings_region_read_posting_from_block(pr, block, state->next_posting_offset, &state->next_posting_offset, &state->posting, 1));
+        RELAY_ERROR(search_result_init(result, q->field, q->word, state->posting.doc_id, state->posting.num_positions, state->posting.positions));
+      }
     }
   }
+
   DEBUG("[%s:'%s'] after: doc id %u, done is %d, started is %d", q->field, q->word, (state->started && !state->done && result) ? result->doc_id : 0, *done, state->started);
 
   return NO_ERROR;
 }
 
-static wp_error* term_advance_to_doc(wp_query* q, wp_segment* s, docid_t doc_id, search_result* result, int* found, int* done) {
+static wp_error* term_advance_to_doc(wp_query* q, wp_segment* seg, docid_t doc_id, search_result* result, int* found, int* done) {
   term_search_state* state = (term_search_state*)q->search_data;
+  DEBUG("[%s:'%s'] seeking through postings for doc %u", q->field, q->word, doc_id);
+
+  if(state->done) { // already at end of stream
+    *done = 1;
+    *found = 0;
+    return NO_ERROR;
+  }
+
+  // now the search logic. see the diagram in text.h for explanation.
+  postings_region* pr = MMAP_OBJ(seg->postings, postings_region);
+
+  // first, rewind through all the blocks until we find the candidate.
+  while(state->block_offset != OFFSET_NONE) {
+    postings_block* block = wp_postings_block_at(pr, state->block_offset);
+    if(doc_id >= block->min_docid) break; // we're here!
+    else { // need to move to the previous block
+      state->block_offset = block->prev_block_offset;
+      if(state->block_offset != OFFSET_NONE) {
+        block = wp_postings_block_at(pr, state->block_offset);
+        state->next_posting_offset = block->postings_head;
+      }
+    }
+  }
+
+  // out of blocks
+  if(state->block_offset == OFFSET_NONE) {
+    state->done = *done = 1;
+    *found = 0;
+    return NO_ERROR;
+  }
+
+/*
+    QUESTION: is advance() required to move right up to the doc_id specified, even if that docid isn't found?
+    e.g. is next() after advance() always guaranteed to return soemthing smaller than the docid that advance()
+    was called on?
+
+    if so, we can't use this short-circuit logic. which would be a shame.
+*/
+
+  // have a block, but we might know the doc's not in here at all
+  postings_block* block = wp_postings_block_at(pr, state->block_offset);
+  if(doc_id > block->max_docid) { // it's not in here!
+    // see QUESTION above
+    *found = 0;
+  }
+  else { // ok, we're going to have to look for it the hard way
+    while((doc_id < state->posting.doc_id) && (state->next_posting_offset < block->size)) {
+      free(state->posting.positions);
+      RELAY_ERROR(wp_text_postings_region_read_posting_from_block(pr, block, state->next_posting_offset, &state->next_posting_offset, &state->posting, 1));
+    }
+
+    *found = (state->posting.doc_id == doc_id ? 1 : 0);
+  }
+
+  // quick check to see if ww're at the end of the postings anyways
+  if((block->prev_block_offset == OFFSET_NONE) && (state->next_posting_offset > block->size)) {
+    state->done = *done = 1;
+  }
+
+  DEBUG("[%s:'%s'] posting advanced to that of doc %u", q->field, q->word, state->posting.doc_id);
+  if(*found) RELAY_ERROR(search_result_init(result, q->field, q->word, state->posting.doc_id, state->posting.num_positions, state->posting.positions));
+
+  return NO_ERROR;
+}
+
+static wp_error* label_advance_to_doc(wp_query* q, wp_segment* seg, docid_t doc_id, search_result* result, int* found, int* done) {
+  label_search_state* state = (label_search_state*)q->search_data;
   DEBUG("[%s:'%s'] seeking through postings for doc %u", q->field, q->word, doc_id);
 
   if(state->done) { // end of stream
@@ -439,17 +530,15 @@ static wp_error* term_advance_to_doc(wp_query* q, wp_segment* s, docid_t doc_id,
     return NO_ERROR;
   }
 
+  postings_region* lpr = MMAP_OBJ(seg->labels, postings_region);
   while(state->posting.doc_id > doc_id) {
-    free(state->posting.positions);
     DEBUG("skipping doc_id %u", state->posting.doc_id);
     if(state->posting.next_offset == OFFSET_NONE) {
       state->done = 1;
       break;
     }
 
-    if(state->label) RELAY_ERROR(wp_segment_read_label(s, state->posting.next_offset, &state->posting));
-    else RELAY_ERROR(wp_segment_read_posting(s, state->posting.next_offset, &state->posting, 1));
-    //DEBUG("advanced posting to %p", state->posting);
+    RELAY_ERROR(wp_label_postings_region_read_label(lpr, state->posting.next_offset, &state->posting));
   }
 
   if(state->done) {
@@ -461,11 +550,12 @@ static wp_error* term_advance_to_doc(wp_query* q, wp_segment* s, docid_t doc_id,
     *done = 0;
     DEBUG("[%s:'%s'] posting advanced to that of doc %u", q->field, q->word, state->posting.doc_id);
     *found = (doc_id == state->posting.doc_id ? 1 : 0);
-    if(*found) RELAY_ERROR(search_result_init(result, q->field, q->word, &state->posting));
+    if(*found) RELAY_ERROR(search_result_init(result, q->field, q->word, state->posting.doc_id, 0, NULL));
   }
 
   return NO_ERROR;
 }
+
 
 // this advances all children *until* it finds a child that doesn't have the
 // doc. at that point it stops. so it will return found=0 if any single child
