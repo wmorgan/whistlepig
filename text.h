@@ -74,7 +74,7 @@ typedef struct postings_block {
 } postings_block;
 
 // private
-#define wp_postings_block_at(postings_region, offset) ((postings_block*)((postings_region) + (offset)))
+#define wp_postings_block_at(postings_region, offset) ((postings_block*)((((postings_region)->postings) + (offset))))
 
 // private: initialize a text postings region
 wp_error* wp_text_postings_region_init(postings_region* pr, uint32_t initial_size) RAISES_ERROR;

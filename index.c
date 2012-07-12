@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include "index.h"
 #include "search.h"
+#include "segment.h"
 #include "lock.h"
 
 #define PATH_BUF_SIZE 4096
@@ -303,12 +304,12 @@ wp_error* wp_index_teardown_query(wp_index* index, wp_query* query) {
 //
 // assumes we have a writelock on the index object here, so that no one can add
 // segments while we're doing this stuff.
-RAISING_STATIC(get_and_writelock_last_segment(wp_index* index, wp_entry* entry, wp_segment** returned_seg)) {
+/*
+RAISING_STATIC(get_and_writelock_last_segment(wp_index* index, wp_segment** returned_seg)) {
   int success;
   RELAY_ERROR(ensure_all_segments(index)); // make sure we know about all segments
   wp_segment* seg = &index->segments[index->num_segments - 1]; // get last segment
   RELAY_ERROR(wp_segment_grab_writelock(seg)); // grab the writelock
-  RELAY_ERROR(wp_segment_ensure_fit(seg, entry, &success));
 
   // if we can fit in there, then return it! (still locked)
   if(success) {
@@ -342,19 +343,20 @@ RAISING_STATIC(get_and_writelock_last_segment(wp_index* index, wp_entry* entry, 
   DEBUG("loaded new segment %d at %p", index->num_segments - 1, seg);
 
   RELAY_ERROR(wp_segment_grab_writelock(seg)); // lock it
-  RELAY_ERROR(wp_segment_ensure_fit(seg, entry, &success));
   if(!success) RAISE_ERROR("can't fit new entry into fresh segment. that's crazy");
 
   *returned_seg = seg;
   return NO_ERROR;
 }
+*/
 
 wp_error* wp_index_add_entry(wp_index* index, wp_entry* entry, uint64_t* doc_id) {
-  wp_segment* seg = NULL;
   docid_t seg_doc_id;
 
   RELAY_ERROR(grab_writelock(index)); // grab full-index lock
-  RELAY_ERROR(get_and_writelock_last_segment(index, entry, &seg));
+  RELAY_ERROR(ensure_all_segments(index)); // make sure we know about all segments
+  wp_segment* seg = &index->segments[index->num_segments - 1]; // get last segment
+  RELAY_ERROR(wp_segment_grab_writelock(seg)); // grab the writelock
   RELAY_ERROR(release_lock(index)); // release full-index lock
 
   RELAY_ERROR(wp_segment_reload(seg));
@@ -479,12 +481,4 @@ wp_error* wp_index_num_docs(wp_index* index, uint64_t* num_docs) {
   }
 
   return NO_ERROR;
-}
-
-// insane. but i'm putting this here. not defined in c99. don't want to make a
-// "utils.c" or "compat.c" or whatever just yet.
-char* strdup(const char* old) {
-  size_t len = strlen(old) + 1;
-  char *new = malloc(len * sizeof(char));
-  return memcpy(new, old, len);
 }

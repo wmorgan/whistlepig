@@ -43,7 +43,7 @@ wp_error* wp_label_postings_region_read_label(postings_region* pr, uint32_t offs
 wp_error* wp_label_postings_region_add_label(postings_region* pr, docid_t doc_id, struct postings_list_header* plh, struct postings_list_header* dead_plh) {
   if(doc_id == 0) RAISE_ERROR("can't add a label to doc 0");
 
-  DEBUG("adding label '%s' to doc %u", label, doc_id);
+  DEBUG("adding label to doc %u", doc_id);
 
 /*
   int success;
@@ -101,7 +101,7 @@ wp_error* wp_label_postings_region_add_label(postings_region* pr, docid_t doc_id
 
     DEBUG("got doc id %u next_offset %u at offset %u (looking for doc id %u)", lp->doc_id, lp->next_offset, next_offset, doc_id);
     if(lp->doc_id == doc_id) {
-      DEBUG("already have label '%s' for doc %u; returning", label, doc_id);
+      DEBUG("already have label for doc %u; returning", doc_id);
       return NO_ERROR;
     }
     else if(lp->doc_id < doc_id) break;
@@ -201,7 +201,7 @@ wp_error* wp_label_postings_region_remove_label(postings_region* pr, docid_t doc
   DEBUG("found label posting for doc %u at offset %u; prev_offset is %u", doc_id, offset, prev_offset);
 
   if(offset == OFFSET_NONE) {
-    DEBUG("no label %s found for doc %u", label, doc_id);
+    DEBUG("no such label found for doc %u", doc_id);
     return NO_ERROR;
   }
 

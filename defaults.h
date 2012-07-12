@@ -7,6 +7,7 @@
 // just some generic definitions that we use in many places.
 
 #include <stdint.h>
+#include <stdio.h>
 
 // these two types are segment-specific. an index as a whole uses a larger
 // datatype for docids, and doesn't do anything with positions. but we

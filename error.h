@@ -35,13 +35,18 @@
 typedef struct wp_error {
   unsigned char type;
   unsigned int size;
-  const char* msg;
-  const char** srcs;
+  char* msg;
+  char** srcs;
   void* data;
 } wp_error;
 
 // data for resize signals
 #define RESIZE_ERROR_POSTINGS_REGION 1
+#define RESIZE_ERROR_STRINGPOOL 2
+#define RESIZE_ERROR_STRINGMAP 3
+#define RESIZE_ERROR_TERMHASH 4
+#define RESIZE_ERROR_SEGMENT 5
+
 typedef struct wp_resize_error_data {
   uint8_t what;
   uint32_t size;
@@ -54,9 +59,9 @@ typedef struct wp_resize_error_data {
 // API methods
 
 // private: make a new error object with a message and source line
-wp_error* wp_error_new(const char* msg, const char* src, unsigned char type, void* data) RAISES_ERROR;
+wp_error* wp_error_new(char* msg, char* src, unsigned char type, void* data) RAISES_ERROR;
 // private: add a source line to a pre-existing error
-wp_error* wp_error_chain(wp_error* e, const char* src) RAISES_ERROR;
+wp_error* wp_error_chain(wp_error* e, char* src) RAISES_ERROR;
 
 // public: free an error, once handled
 void wp_error_free(wp_error* e);

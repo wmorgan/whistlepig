@@ -87,7 +87,7 @@ wp_error* wp_lock_grab(pthread_rwlock_t* lock, int lock_type) {
     total_delay_ms += delay_ms;
   }
 
-  if(total_delay_ms > 0) DEBUG(":( acquired %slock for after %ums\n", lock_name, total_delay_ms);
+  if(total_delay_ms > 0) DEBUG(":( acquired %slock for after %ums", lock_name, total_delay_ms);
   return NO_ERROR;
 }
 

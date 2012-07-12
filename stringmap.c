@@ -275,8 +275,8 @@ uint32_t stringmap_string_to_int(stringmap* h, stringpool* pool, const char* s) 
 wp_error* stringmap_add(stringmap *h, stringpool* pool, const char* s, uint32_t* id) {
   int status;
   uint32_t idx = stringmap_put(h, pool, s, &status);
-  if(status == -1) RAISE_ERROR("out of space in hash put");
-  if(status == -2) RAISE_ERROR("out of space in pool put");
+  if(status == -1) RAISE_RESIZE_ERROR(RESIZE_ERROR_STRINGMAP, strlen(s));
+  if(status == -2) RAISE_RESIZE_ERROR(RESIZE_ERROR_STRINGPOOL, strlen(s));
 
   *id = STRINGMAP_KEYS(h)[idx];
 

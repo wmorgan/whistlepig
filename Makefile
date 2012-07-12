@@ -24,7 +24,7 @@ CCOPT= $(CFLAGS) $(CCLINK) $(ARCH) $(PROF)
 DEBUG?= -rdynamic -ggdb
 
 TESTFILES = test-segment.c test-stringmap.c test-stringpool.c test-termhash.c test-search.c test-labels.c test-tokenizer.c test-queries.c test-snippets.c
-CSRCFILES = segment.c termhash.c stringmap.c error.c query.c search.c stringpool.c mmap-obj.c query-parser.c index.c entry.c lock.c snippeter.c label.c text.c postings_region.c
+CSRCFILES = segment.c termhash.c stringmap.c error.c query.c search.c stringpool.c mmap-obj.c query-parser.c index.c entry.c lock.c snippeter.c label.c text.c postings_region.c util.c
 HEADERFILES = $(CSRCFILES:.c=.h) defaults.h whistlepig.h khash.h rarray.h
 LEXFILES = tokenizer.lex query-parser.lex
 YFILES = query-parser.y
@@ -55,7 +55,7 @@ benchmark-queries.o: benchmark-queries.c whistlepig.h defaults.h index.h \
  khash.h rarray.h query.h query-parser.h lock.h snippeter.h timer.h
 dump.o: dump.c whistlepig.h defaults.h index.h segment.h error.h text.h \
  postings_region.h mmap-obj.h termhash.h entry.h khash.h rarray.h query.h \
- query-parser.h lock.h snippeter.h
+ query-parser.h lock.h snippeter.h label.h stringmap.h stringpool.h
 entry.o: entry.c whistlepig.h defaults.h index.h segment.h error.h text.h \
  postings_region.h mmap-obj.h termhash.h entry.h khash.h rarray.h query.h \
  query-parser.h lock.h snippeter.h tokenizer.lex.h
@@ -98,14 +98,15 @@ query.o: query.c whistlepig.h defaults.h index.h segment.h error.h text.h \
  postings_region.h mmap-obj.h termhash.h entry.h khash.h rarray.h query.h \
  query-parser.h lock.h snippeter.h
 search.o: search.c search.h defaults.h segment.h error.h text.h \
- postings_region.h mmap-obj.h termhash.h query.h stringmap.h stringpool.h
+ postings_region.h mmap-obj.h termhash.h query.h stringmap.h stringpool.h \
+ label.h
 segment.o: segment.c lock.h error.h segment.h defaults.h text.h \
  postings_region.h mmap-obj.h termhash.h stringmap.h stringpool.h label.h
 snippeter.o: snippeter.c whistlepig.h defaults.h index.h segment.h \
  error.h text.h postings_region.h mmap-obj.h termhash.h entry.h khash.h \
  rarray.h query.h query-parser.h lock.h snippeter.h tokenizer.lex.h
 stringmap.o: stringmap.c stringmap.h stringpool.h error.h defaults.h
-stringpool.o: stringpool.c defaults.h stringpool.h
+stringpool.o: stringpool.c defaults.h stringpool.h util.h
 termhash.o: termhash.c termhash.h error.h defaults.h
 test-labels.o: test-labels.c test.h query.h segment.h defaults.h error.h \
  text.h postings_region.h mmap-obj.h termhash.h query-parser.h index.h \
@@ -131,6 +132,7 @@ text.o: text.c text.h defaults.h postings_region.h error.h mmap-obj.h \
  termhash.h
 tokenizer.lex.o: tokenizer.lex.c segment.h defaults.h error.h text.h \
  postings_region.h mmap-obj.h termhash.h
+util.o: util.c util.h
 
 benchmark-queries: benchmark-queries.o $(OBJ)
 	@$(ECHO) LINK $@
@@ -210,7 +212,7 @@ test-integration: batch-run-queries integration-tests/enron1m.index0.pr
 	ruby integration-tests/eval.rb integration-tests/testset1.txt
 
 debug:
-	make DEBUGOUTPUT=-DDEBUGOUTPUT
+	+make DEBUGOUTPUT=-DDEBUGOUTPUT
 
 EXPORTFILES=$(CSRCFILES) $(HEADERFILES) $(GENFILES)
 rubygem: $(EXPORTFILES)

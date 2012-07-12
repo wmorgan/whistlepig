@@ -31,28 +31,12 @@ typedef struct stringpool {
 
 // API methods
 
-// public: create a stringpool
 void stringpool_init(stringpool* p);
-
-// public: add a string, returning an int
 uint32_t stringpool_add(stringpool* p, const char* s);
-
-// public: does this stringpool need to be increased?
-int stringpool_needs_bump(stringpool* p);
-
-// public: increase the size of the stringpool
-void stringpool_bump_size(stringpool* p);
-
-// public: given an id, return the string
 char* stringpool_lookup(stringpool* p, uint32_t id);
-
-// public: returns the byte size of the pool
 uint32_t stringpool_size(stringpool* p);
-
-// public: returns the initial byte size for an empty pool
 uint32_t stringpool_initial_size();
-
-// public: returns the byte size for the next larger version of a pool
-uint32_t stringpool_next_size(stringpool* p);
+uint32_t stringpool_next_size_for(stringpool* p, uint32_t additional);
+void stringpool_resize_to(stringpool* p, uint32_t new_size);
 
 #endif

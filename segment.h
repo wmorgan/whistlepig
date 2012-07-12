@@ -75,6 +75,9 @@ wp_error* wp_segment_read_posting(wp_segment* s, uint32_t offset, posting* po, i
 // size of the postings list entry before doing this!
 wp_error* wp_segment_add_posting(wp_segment* s, const char* field, const char* word, docid_t doc_id, uint32_t num_positions, pos_t positions[]) RAISES_ERROR;
 
+wp_error* wp_segment_add_label(wp_segment* s, const char* label, docid_t doc_id) RAISES_ERROR;
+wp_error* wp_segment_remove_label(wp_segment* s, const char* label, docid_t doc_id) RAISES_ERROR;
+
 // public: get a new docid
 wp_error* wp_segment_grab_docid(wp_segment* s, docid_t* docid) RAISES_ERROR;
 
