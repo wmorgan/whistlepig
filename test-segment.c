@@ -2,6 +2,7 @@
 #include "segment.h"
 #include "tokenizer.lex.h"
 #include "query.h"
+#include "search.h"
 #include "index.h"
 
 #define SEGMENT_PATH "/tmp/segment-test"
@@ -14,17 +15,11 @@ wp_error* setup(wp_segment* segment) {
 
 #define ADD_DOC(word, pos) \
   positions[0] = pos; \
-  RELAY_ERROR(wp_segment_ensure_fit(segment, postings_bytes, 0, &success)); \
-  if(success != 1) RAISE_ERROR("couldn't ensure segment fit"); \
   RELAY_ERROR(wp_segment_add_posting(segment, "body", word, doc_id, 1, positions));
 
 wp_error* add_docs(wp_segment* segment) {
   docid_t doc_id;
   pos_t positions[10];
-  uint32_t postings_bytes;
-  int success;
-
-  RELAY_ERROR(wp_segment_sizeof_posarray(segment, 1, NULL, &postings_bytes));
 
   RELAY_ERROR(wp_segment_grab_docid(segment, &doc_id));
   ADD_DOC("one", 0);
@@ -94,7 +89,9 @@ TEST(simple_term_queries) {
   RELAY_ERROR(add_docs(&segment));
 
   query = wp_query_new_term("body", "one");
+  printf(">>>\n");
   RUN_QUERY(query);
+  printf("<<<\n");
 
   ASSERT_EQUALS_UINT(1, num_results);
   ASSERT_EQUALS_UINT(1, results[0].doc_id);

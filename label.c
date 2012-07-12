@@ -45,46 +45,6 @@ wp_error* wp_label_postings_region_add_label(postings_region* pr, docid_t doc_id
 
   DEBUG("adding label to doc %u", doc_id);
 
-/*
-  int success;
-
-  // TODO move this logic up to ensure_fit()
-  RELAY_ERROR(bump_stringmap(s, &success));
-  RELAY_ERROR(bump_stringpool(s, &success));
-  RELAY_ERROR(bump_termhash(s, &success));
-*/
-
-/*
-  label_postings_region* pr = MMAP_OBJ(s->labels, label_postings_region);
-  stringmap* sh = MMAP_OBJ(s->stringmap, stringmap);
-  termhash* th = MMAP_OBJ(s->termhash, termhash);
-  stringpool* sp = MMAP_OBJ(s->stringpool, stringpool);
-
-  // construct the term object. term objects for labels have the special
-  // sentinel field value 0
-  term t;
-  t.field_s = 0; // label sentinel value
-  RELAY_ERROR(stringmap_add(sh, sp, label, &t.word_s)); // get word key
-
-  // find the previous and next label postings, between which we'll insert this
-  // posting
-  postings_list_header* plh = termhash_get_val(th, t);
-  if(plh == NULL) {
-    RELAY_ERROR(termhash_put_val(th, t, &blank_plh));
-    plh = termhash_get_val(th, t);
-  }
-
-  // find a space for the posting by first checking for a free postings in the
-  // dead list. the dead list is the list stored under the sentinel term with
-  // field 0 and word 0.
-  postings_list_header* dead_plh = termhash_get_val(th, dead_term);
-  if(dead_plh == NULL) {
-    RELAY_ERROR(termhash_put_val(th, dead_term, &blank_plh));
-    dead_plh = termhash_get_val(th, t);
-  }
-
-  */
-
   uint32_t next_offset = plh->next_offset;
   docid_t last_docid = DOCID_NONE;
   uint32_t prev_offset = OFFSET_NONE;
@@ -94,6 +54,7 @@ wp_error* wp_label_postings_region_add_label(postings_region* pr, docid_t doc_id
   while(next_offset != OFFSET_NONE) {
     label_posting* lp = label_posting_at(pr, next_offset);
 
+    DEBUG("loading posting at %u", next_offset);
     if((last_docid != DOCID_NONE) && (lp->doc_id >= last_docid))
       RAISE_ERROR("whistlepig index corruption! lp %u has docid %u but last docid at lp %u was %u", next_offset, lp->doc_id, prev_offset, last_docid);
     else
@@ -122,6 +83,8 @@ wp_error* wp_label_postings_region_add_label(postings_region* pr, docid_t doc_id
     dead_plh->count--;
   }
 
+  if((entry_offset + sizeof(label_posting)) >= pr->postings_tail) RAISE_RESIZE_ERROR(RESIZE_ERROR_POSTINGS_REGION, sizeof(label_posting));
+
   // finally, write the entry to the label postings region
   DEBUG("label entry will be at offset %u, prev offset is %u and next offset is %u", entry_offset, prev_offset, next_offset);
   label_posting* po = label_posting_at(pr, entry_offset);
@@ -141,47 +104,11 @@ wp_error* wp_label_postings_region_add_label(postings_region* pr, docid_t doc_id
 }
 
 wp_error* wp_label_postings_region_remove_label(postings_region* pr, docid_t doc_id, struct postings_list_header* plh, struct postings_list_header* dead_plh) {
-/*
-  // TODO move this logic to ensure_fit
-  int success;
-
-  RELAY_ERROR(bump_termhash(s, &success)); // we might add an entry for the dead list
-  */
-
-/*
-  postings_region* pr = MMAP_OBJ(s->labels, postings_region);
-  stringmap* sh = MMAP_OBJ(s->stringmap, stringmap);
-  termhash* th = MMAP_OBJ(s->termhash, termhash);
-  stringpool* sp = MMAP_OBJ(s->stringpool, stringpool);
-
-  // construct the term object. term objects for labels have the special
-  // sentinel field value 0
-  term t;
-  t.field_s = 0; // label sentinel value
-  t.word_s = stringmap_string_to_int(sh, sp, label); // will be -1 if not there
-
-  // find the posting and the previous posting in the list, if any
-  postings_list_header* plh = termhash_get_val(th, t);
-
-  if(plh == NULL) {
-    DEBUG("no such label %s", label);
-    return NO_ERROR;
-  }
-  */
-
-  /*
-  // now add it to the dead list for later reclamation
-  postings_list_header* dead_plh = termhash_get_val(th, dead_term);
-  if(dead_plh == NULL) {
-    RELAY_ERROR(termhash_put_val(th, dead_term, &blank_plh));
-    dead_plh = termhash_get_val(th, t);
-  }
-  */
-
   docid_t last_docid = DOCID_NONE;
   uint32_t prev_offset = OFFSET_NONE;
   uint32_t offset = plh->next_offset;
   label_posting* lp = NULL;
+
   while(offset != OFFSET_NONE) {
     lp = label_posting_at(pr, offset);
 

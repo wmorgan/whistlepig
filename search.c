@@ -389,15 +389,18 @@ static wp_error* label_next_doc(wp_query* q, wp_segment* seg, search_result* res
   *done = 0;
   if(!state->started) { // start
     state->started = 1;
+    DEBUG("starting label stream with docid  %u", state->posting.doc_id);
     RELAY_ERROR(search_result_init(result, q->field, q->word, state->posting.doc_id, 0, NULL));
   }
   else { // advance
     if(state->posting.next_offset == OFFSET_NONE) { // end of stream
+      DEBUG("ending label stream");
       *done = state->done = 1;
     }
     else {
       postings_region* lpr = MMAP_OBJ(seg->labels, postings_region);
       RELAY_ERROR(wp_label_postings_region_read_label(lpr, state->posting.next_offset, &state->posting));
+      DEBUG("continuing label stream with docid %u", state->posting.doc_id);
       RELAY_ERROR(search_result_init(result, q->field, q->word, state->posting.doc_id, 0, NULL));
     }
   }
@@ -418,33 +421,30 @@ static wp_error* term_next_doc(wp_query* q, wp_segment* seg, search_result* resu
   *done = 0;
   if(!state->started) { // start
     state->started = 1;
+    DEBUG("starting term stream with docid %u", state->posting.doc_id);
     RELAY_ERROR(search_result_init(result, q->field, q->word, state->posting.doc_id, state->posting.num_positions, state->posting.positions));
   }
   else { // advance
     free(state->posting.positions);
 
-    if(state->block_offset == OFFSET_NONE) {
+    postings_region* pr = MMAP_OBJ(seg->postings, postings_region);
+    postings_block* block = wp_postings_block_at(pr, state->block_offset);
+
+    if((state->next_posting_offset >= block->size) && (block->prev_block_offset == OFFSET_NONE)) {
+      DEBUG("ending term stream");
       *done = state->done = 1;
     }
-    else {
-      postings_region* pr = MMAP_OBJ(seg->postings, postings_region);
-      postings_block* block = wp_postings_block_at(pr, state->block_offset);
-
+    else { // still have something to read
       if(state->next_posting_offset >= block->size) { // need to move to the next block, if any
+        DEBUG("moving to next block for term stream");
         state->block_offset = block->prev_block_offset;
-        if(state->block_offset == OFFSET_NONE) {
-          *done = state->done = 1;
-        }
-        else {
-          block = wp_postings_block_at(pr, state->block_offset);
-          state->next_posting_offset = block->postings_head;
-        }
+        block = wp_postings_block_at(pr, state->block_offset);
+        state->next_posting_offset = block->postings_head;
       }
 
-      if(!*done) {
-        RELAY_ERROR(wp_text_postings_region_read_posting_from_block(pr, block, state->next_posting_offset, &state->next_posting_offset, &state->posting, 1));
-        RELAY_ERROR(search_result_init(result, q->field, q->word, state->posting.doc_id, state->posting.num_positions, state->posting.positions));
-      }
+      RELAY_ERROR(wp_text_postings_region_read_posting_from_block(pr, block, state->next_posting_offset, &state->next_posting_offset, &state->posting, 1));
+      DEBUG("continuing term stream with docid %u", state->posting.doc_id);
+      RELAY_ERROR(search_result_init(result, q->field, q->word, state->posting.doc_id, state->posting.num_positions, state->posting.positions));
     }
   }
 

@@ -327,6 +327,7 @@ retry:
     else RELAY_ERROR(e);
   }
 
+  pr->num_postings++;
   return NO_ERROR;
 }
 
@@ -340,7 +341,7 @@ wp_error* wp_segment_add_label(wp_segment* s, const char* label, docid_t doc_id)
   RELAY_ERROR(bump_stringmap_if_necessary(s));
   RELAY_ERROR(bump_termhash_if_necessary(s));
 
-  postings_region* pr = MMAP_OBJ(s->labels, postings_region);
+  postings_region* lpr = MMAP_OBJ(s->labels, postings_region);
   termhash* th = MMAP_OBJ(s->termhash, termhash);
 
   // construct the term object. term objects for labels have the special
@@ -353,9 +354,11 @@ wp_error* wp_segment_add_label(wp_segment* s, const char* label, docid_t doc_id)
   // posting
   postings_list_header* plh = termhash_get_val(th, t);
   if(plh == NULL) {
+    DEBUG("starting a new postings list for ~%s", label);
     RELAY_ERROR(termhash_put_val(th, t, &blank_plh));
     plh = termhash_get_val(th, t);
   }
+  else DEBUG("using an existing postings list for ~%s with %u entries", label, plh->count);
 
   // find a space for the posting by first checking for a free postings in the
   // dead list. the dead list is the list stored under the sentinel term with
@@ -366,9 +369,26 @@ wp_error* wp_segment_add_label(wp_segment* s, const char* label, docid_t doc_id)
     dead_plh = termhash_get_val(th, t);
   }
 
-  // TODO handle resize exceptions
-  RELAY_ERROR(wp_label_postings_region_add_label(pr, doc_id, plh, dead_plh));
+  wp_error* e = NULL;
 
+retry:
+  lpr = MMAP_OBJ(s->labels, postings_region); // could have changed!
+  e = wp_label_postings_region_add_label(lpr, doc_id, plh, dead_plh);
+  if(e != NULL) {
+    if(e->type == WP_ERROR_TYPE_RESIZE) {
+      wp_resize_error_data* data = (wp_resize_error_data*)e->data;
+
+      DEBUG("postings region resize signal. resizing...");
+      RELAY_ERROR(bump_postings_region(&s->labels, data->size));
+      wp_error_free(e);
+
+      DEBUG("postings region resize signal. retrying...");
+      goto retry;
+    }
+    else RELAY_ERROR(e);
+  }
+
+  lpr->num_postings++;
   return NO_ERROR;
 }
 

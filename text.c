@@ -46,17 +46,18 @@ RAISING_STATIC(read_uint32_vbe(uint8_t* location, uint32_t* val, uint32_t* size)
   uint8_t* start = location;
   uint32_t shift = 0;
 
+  printf("    reading from position %p:\n", location);
   *val = 0;
   while(*location & 0x80) {
-    //printf("yy read continue byte %d -> %d at %p\n", *location, *location & ~0x80, location);
+    printf("       read continuation byte %d -> %d at %p\n", *location, *location & ~0x80, location);
     *val |= (*location & ~0x80) << shift;
     shift += 7;
     location++;
   }
   *val |= *location << shift;
-  //printf("yy read final byte %d at %p\n", *location, location);
+  printf("      read final byte %d at %p\n", *location, location);
   *size = (uint32_t)(location + 1 - start);
-  //printf("yy total %d bytes, val = %d\n\n", *size, *val);
+  printf("    read %d bytes total, val = %d\n", *size, *val);
   return NO_ERROR;
 }
 
@@ -271,8 +272,9 @@ wp_error* wp_text_postings_region_add_posting(postings_region* pr, posting* po, 
 wp_error* wp_text_postings_region_read_posting_from_block(postings_region* pr, postings_block* block, uint32_t offset, uint32_t* next_offset, posting* po, int include_positions) {
   (void)pr;
   uint32_t size;
+  uint32_t orig_offset = offset;
 
-  //DEBUG("reading posting from offset %u -> %p (pr %p base %p)", offset, &pr->data[offset], pr, &pr->data);
+  DEBUG("reading posting from offset %u -> %p (pr %p base %p)", offset, &pr->postings[offset], pr, &pr->postings);
 
   if(offset < block->postings_head) RAISE_ERROR("too-small offset: %u vs %u", offset, block->postings_head);
   if(offset >= block->size) RAISE_ERROR("too-large offset: %u vs %u", offset, block->size);
@@ -280,14 +282,14 @@ wp_error* wp_text_postings_region_read_posting_from_block(postings_region* pr, p
   RELAY_ERROR(read_uint32_vbe(&block->data[offset], &po->doc_id, &size));
   int is_single_posting = po->doc_id & 1;
   po->doc_id = po->doc_id >> 1;
-  //DEBUG("read doc_id %u (%u bytes)", po->doc_id, size);
+  DEBUG("read doc_id %u (%u bytes)", po->doc_id, size);
   offset += size;
 
   if(include_positions) {
     if(is_single_posting) po->num_positions = 1;
     else {
       RELAY_ERROR(read_uint32_vbe(&block->data[offset], &po->num_positions, &size));
-      //DEBUG("read num_positions: %u (%u bytes)", po->num_positions, size);
+      DEBUG("read num_positions: %u (%u bytes)", po->num_positions, size);
       offset += size;
     }
 
@@ -297,7 +299,7 @@ wp_error* wp_text_postings_region_read_posting_from_block(postings_region* pr, p
       RELAY_ERROR(read_uint32_vbe(&block->data[offset], &po->positions[i], &size));
       offset += size;
       po->positions[i] += (i == 0 ? 0 : po->positions[i - 1]);
-      //DEBUG("read position %u (%u bytes)", po->positions[i], size);
+      DEBUG("read position %u (%u bytes)", po->positions[i], size);
     }
   }
   else {
@@ -306,8 +308,8 @@ wp_error* wp_text_postings_region_read_posting_from_block(postings_region* pr, p
   }
 
   *next_offset = offset;
-  //DEBUG("total record took %u bytes", offset - orig_offset);
-  //printf("*** read posting %u %u %u from %u\n", po->doc_id, po->next_offset, po->num_positions, orig_offset);
+  DEBUG("total record took %u bytes", offset - orig_offset);
+  printf("*** read posting %u %u from %u\n", po->doc_id, po->num_positions, orig_offset);
 
   return NO_ERROR;
 }
