@@ -83,7 +83,7 @@ wp_error* wp_label_postings_region_add_label(postings_region* pr, docid_t doc_id
     dead_plh->count--;
   }
 
-  if((entry_offset + sizeof(label_posting)) >= pr->postings_tail) RAISE_RESIZE_ERROR(RESIZE_ERROR_POSTINGS_REGION, sizeof(label_posting));
+  if((entry_offset + sizeof(label_posting)) >= pr->postings_tail) RAISE_RESIZE_ERROR(RESIZE_ERROR_POSTINGS_REGION, (uint32_t)sizeof(label_posting));
 
   // finally, write the entry to the label postings region
   DEBUG("label entry will be at offset %u, prev offset is %u and next offset is %u", entry_offset, prev_offset, next_offset);

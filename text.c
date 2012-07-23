@@ -24,21 +24,21 @@ static uint32_t sizeof_uint32_vbe(uint32_t val) {
 }
 
 RAISING_STATIC(write_uint32_vbe(uint8_t* location, uint32_t val, uint32_t* size)) {
-  //printf("    writing %u to position %p as:\n", val, location);
+  printf("    writing %u to position %p as:\n", val, location);
   uint8_t* start = location;
 
   while(val > VALUE_BITMASK) {
     uint8_t c = (val & VALUE_BITMASK) | 0x80;
     *location = c;
-    //printf("      %d = %d | %d at %p\n", c, val & VALUE_BITMASK, 0x80, location);
+    printf("      %d = %d | %d at %p\n", c, val & VALUE_BITMASK, 0x80, location);
     location++;
     val >>= 7;
   }
   uint8_t c = (val & VALUE_BITMASK);
   *location = c;
-  //printf("      %d at %p\n", c, location);
+  printf("      %d at %p\n", c, location);
   *size = (uint32_t)(location + 1 - start);
-  //printf("    total %u bytes\n", *size);
+  printf("    total %u bytes\n", *size);
   return NO_ERROR;
 }
 
@@ -46,7 +46,7 @@ RAISING_STATIC(read_uint32_vbe(uint8_t* location, uint32_t* val, uint32_t* size)
   uint8_t* start = location;
   uint32_t shift = 0;
 
-  printf("    reading from position %p:\n", location);
+  printf("    reading from position %p\n", location);
   *val = 0;
   while(*location & 0x80) {
     printf("       read continuation byte %d -> %d at %p\n", *location, *location & ~0x80, location);
@@ -154,7 +154,15 @@ RAISING_STATIC(add_posting_to_block(postings_block* block, posting* po)) {
     // -   positions, delta-encoded
     // - old cur_docid, re-encoded as delta cur_docid (currently 0, delta the old max_docid)
 
+    // a little extra logic to handle the single-posting trick
+    int prev_docid_is_single = block->data[block->postings_head] & 1;
+    DEBUG("prev docid is single: %u", prev_docid_is_single);
+
     uint32_t prev_docid_delta_encoded = doc_id - block->max_docid;
+    prev_docid_delta_encoded >>= 1;
+    prev_docid_delta_encoded |= prev_docid_is_single;
+    DEBUG("prev docid will be represented as %u", prev_docid_delta_encoded);
+
     uint32_t prev_docid_size = sizeof_uint32_vbe(prev_docid_delta_encoded); // gonna rewrite this from 0
     uint32_t total_size = cur_posting_size + prev_docid_size - 1; // minus 1 for the single-byte docids that's going to be rewritten
     DEBUG("posting is %u bytes. rewrite of prev docid is %u bytes. total requirement is %u bytes", cur_posting_size, prev_docid_size, total_size);
@@ -174,6 +182,7 @@ RAISING_STATIC(add_posting_to_block(postings_block* block, posting* po)) {
     if(size != prev_docid_size) RAISE_ERROR("size mismatch");
 
     block->max_docid = doc_id;
+    DEBUG("setting block max_docid to %u", doc_id);
   }
 
   // undo our change just in case (kinda lame)
@@ -197,7 +206,7 @@ RAISING_STATIC(build_new_block(postings_region* pr, uint32_t min_size, uint32_t 
   uint32_t new_size = MIN_BLOCK_SIZE;
   while(new_size < min_size) new_size *= 2;
 
-  DEBUG("going to make a new block of %u + %u = %u bytes", new_size, sizeof(postings_block), new_size + sizeof(postings_block));
+  DEBUG("going to make a new block of %u + %zu = %zu bytes", new_size, sizeof(postings_block), new_size + sizeof(postings_block));
   new_size += sizeof(postings_block);
 
   DEBUG("have %u bytes left in this postings region", pr->postings_tail - pr->postings_head);
@@ -210,7 +219,7 @@ RAISING_STATIC(build_new_block(postings_region* pr, uint32_t min_size, uint32_t 
   *new_offset = pr->postings_head;
   pr->postings_head += new_size;
 
-  DEBUG("new block is at offset %u and will have %u bytes for postings", *new_offset, new_size - sizeof(postings_block));
+  DEBUG("new block is at offset %u and will have %lu bytes for postings", *new_offset, new_size - sizeof(postings_block));
   postings_block* block = wp_postings_block_at(pr, *new_offset);
   block->prev_block_offset = old_offset;
   block->size = new_size - sizeof(postings_block);

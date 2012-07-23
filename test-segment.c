@@ -89,15 +89,15 @@ TEST(simple_term_queries) {
   RELAY_ERROR(add_docs(&segment));
 
   query = wp_query_new_term("body", "one");
-  printf(">>>\n");
   RUN_QUERY(query);
-  printf("<<<\n");
 
   ASSERT_EQUALS_UINT(1, num_results);
   ASSERT_EQUALS_UINT(1, results[0].doc_id);
 
   query = wp_query_new_term("body", "two");
+  printf("<<<\n");
   RUN_QUERY(query);
+  printf(">>>\n");
 
   ASSERT_EQUALS_UINT(2, num_results);
   ASSERT_EQUALS_UINT(2, results[0].doc_id);

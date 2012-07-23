@@ -13,6 +13,7 @@ typedef struct label_search_state {
 
 typedef struct term_search_state {
   posting posting;
+  uint32_t docid_delta;
   uint32_t next_posting_offset;
   uint32_t block_offset;
   int started;
@@ -260,6 +261,8 @@ static wp_error* term_init_search_state(wp_query* q, wp_segment* seg) {
     state->done = 0;
     state->block_offset = offset;
     postings_block* block = wp_postings_block_at(pr, offset);
+    state->docid_delta = block->max_docid;
+    DEBUG("docid_delta is %u", state->docid_delta);
 
     // blocks are guaranteed to have one posting, so we can go ahead and read
     // one without worrying about being done with the block
@@ -280,8 +283,7 @@ static wp_error* term_release_search_state(wp_query* q) {
 }
 
 static wp_error* label_release_search_state(wp_query* q) {
-  term_search_state* state = q->search_data;
-  if(!state->done) free(state->posting.positions);
+  label_search_state* state = q->search_data;
   free(state);
   RELAY_ERROR(release_children(q));
   return NO_ERROR;
@@ -421,8 +423,11 @@ static wp_error* term_next_doc(wp_query* q, wp_segment* seg, search_result* resu
   *done = 0;
   if(!state->started) { // start
     state->started = 1;
-    DEBUG("starting term stream with docid %u", state->posting.doc_id);
-    RELAY_ERROR(search_result_init(result, q->field, q->word, state->posting.doc_id, state->posting.num_positions, state->posting.positions));
+
+    if(state->docid_delta <= state->posting.doc_id) RAISE_ERROR("have docid %u but posting %u", state->docid_delta, state->posting.doc_id);
+    state->docid_delta -= state->posting.doc_id;
+    DEBUG("starting term stream with docid %u", state->docid_delta);
+    RELAY_ERROR(search_result_init(result, q->field, q->word, state->docid_delta, state->posting.num_positions, state->posting.positions));
   }
   else { // advance
     free(state->posting.positions);
@@ -440,11 +445,14 @@ static wp_error* term_next_doc(wp_query* q, wp_segment* seg, search_result* resu
         state->block_offset = block->prev_block_offset;
         block = wp_postings_block_at(pr, state->block_offset);
         state->next_posting_offset = block->postings_head;
+        state->docid_delta = block->max_docid;
       }
 
       RELAY_ERROR(wp_text_postings_region_read_posting_from_block(pr, block, state->next_posting_offset, &state->next_posting_offset, &state->posting, 1));
-      DEBUG("continuing term stream with docid %u", state->posting.doc_id);
-      RELAY_ERROR(search_result_init(result, q->field, q->word, state->posting.doc_id, state->posting.num_positions, state->posting.positions));
+      if(state->docid_delta <= state->posting.doc_id) RAISE_ERROR("have docid %u but posting %u", state->docid_delta, state->posting.doc_id);
+      state->docid_delta -= state->posting.doc_id;
+      DEBUG("continuing term stream with docid %u", state->docid_delta);
+      RELAY_ERROR(search_result_init(result, q->field, q->word, state->docid_delta, state->posting.num_positions, state->posting.positions));
     }
   }
 
