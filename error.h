@@ -46,6 +46,7 @@ typedef struct wp_error {
 #define RESIZE_ERROR_STRINGMAP 3
 #define RESIZE_ERROR_TERMHASH 4
 #define RESIZE_ERROR_SEGMENT 5
+#define RESIZE_ERROR_POSTINGS_BLOCK 6
 
 typedef struct wp_resize_error_data {
   uint8_t what;

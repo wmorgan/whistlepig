@@ -474,56 +474,72 @@ static wp_error* term_advance_to_doc(wp_query* q, wp_segment* seg, docid_t doc_i
   // now the search logic. see the diagram in text.h for explanation.
   postings_region* pr = MMAP_OBJ(seg->postings, postings_region);
 
-  // first, rewind through all the blocks until we find the candidate.
+  // if we move to another block we'll have to read the posting
+  int moved = 0;
+
+  // first, let's make sure we are at a block that might actually contain this
   while(state->block_offset != OFFSET_NONE) {
     postings_block* block = wp_postings_block_at(pr, state->block_offset);
+    DEBUG("comparing docid %u vs block min %u", doc_id, block->min_docid);
     if(doc_id >= block->min_docid) break; // we're here!
     else { // need to move to the previous block
+      DEBUG("advancing to next block");
       state->block_offset = block->prev_block_offset;
       if(state->block_offset != OFFSET_NONE) {
         block = wp_postings_block_at(pr, state->block_offset);
         state->next_posting_offset = block->postings_head;
+        state->docid_delta = block->max_docid;
+        moved = 1;
       }
     }
   }
 
   // out of blocks
   if(state->block_offset == OFFSET_NONE) {
+    DEBUG("did not find a block containing %u", doc_id);
     state->done = *done = 1;
     *found = 0;
     return NO_ERROR;
   }
 
-/*
-    QUESTION: is advance() required to move right up to the doc_id specified, even if that docid isn't found?
-    e.g. is next() after advance() always guaranteed to return soemthing smaller than the docid that advance()
-    was called on?
-
-    if so, we can't use this short-circuit logic. which would be a shame.
-*/
-
-  // have a block, but we might know the doc's not in here at all
+  // so now we're in a block and the doc *might* be in there. let's see!
   postings_block* block = wp_postings_block_at(pr, state->block_offset);
+
+  if(moved) { // need to read in the first posting
+    free(state->posting.positions);
+    RELAY_ERROR(wp_text_postings_region_read_posting_from_block(pr, block, state->next_posting_offset, &state->next_posting_offset, &state->posting, 1));
+  }
+
   if(doc_id > block->max_docid) { // it's not in here!
-    // see QUESTION above
+    // TODO see if we can actually do this. this might break the advance() contract
+    DEBUG("docid %u is not in this block (min %u max %u). short-circuiting!", doc_id, block->min_docid, block->max_docid);
     *found = 0;
   }
-  else { // ok, we're going to have to look for it the hard way
-    while((doc_id < state->posting.doc_id) && (state->next_posting_offset < block->size)) {
+  else { // ok, let's look in the block and see if we can find it
+    DEBUG("starting or resuming advance to doc %u at position %u of %u in block of docids (%u, %u)", doc_id, state->next_posting_offset, block->size, block->min_docid, block->max_docid);
+    while((doc_id < state->docid_delta) && (state->next_posting_offset < block->size)) {
+      DEBUG("during advance, found docid %u", state->docid_delta);
       free(state->posting.positions);
       RELAY_ERROR(wp_text_postings_region_read_posting_from_block(pr, block, state->next_posting_offset, &state->next_posting_offset, &state->posting, 1));
+      if(state->docid_delta <= state->posting.doc_id) {
+        char buf[1024];
+        wp_query_to_s(q, 1024, buf);
+        RAISE_ERROR("have docid %u but posting %u in search for %s", state->docid_delta, state->posting.doc_id, buf);
+      }
+      state->docid_delta -= state->posting.doc_id;
     }
 
-    *found = (state->posting.doc_id == doc_id ? 1 : 0);
+    DEBUG("stopping advancing through this block at docid %u (looking for %u)", state->docid_delta, doc_id);
+    *found = (state->docid_delta == doc_id ? 1 : 0);
   }
 
-  // quick check to see if ww're at the end of the postings anyways
+  // quick check to see if we're at the end of the postings anyways
   if((block->prev_block_offset == OFFSET_NONE) && (state->next_posting_offset > block->size)) {
     state->done = *done = 1;
   }
 
-  DEBUG("[%s:'%s'] posting advanced to that of doc %u", q->field, q->word, state->posting.doc_id);
-  if(*found) RELAY_ERROR(search_result_init(result, q->field, q->word, state->posting.doc_id, state->posting.num_positions, state->posting.positions));
+  DEBUG("[%s:'%s'] posting advanced to that of doc %u", q->field, q->word, state->docid_delta);
+  if(*found) RELAY_ERROR(search_result_init(result, q->field, q->word, state->docid_delta, state->posting.num_positions, state->posting.positions));
 
   return NO_ERROR;
 }

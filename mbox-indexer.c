@@ -6,6 +6,12 @@
 #include "whistlepig.h"
 #include "timer.h"
 
+
+#include <inttypes.h>
+//#include <stdio.h>
+//#include <sys/types.h>
+//#include <sys/stat.h>
+
 #define BUF_SIZE 2048
 
 static void make_lowercase(char* c, size_t len) {
@@ -89,19 +95,19 @@ int main(int argc, char* argv[]) {
 
     long end_offset = ftell(mbox);
     if(end_offset > start_offset) {
-      size_t dummy_size;
+      size_t num_written;
       uint64_t doc_id;
       DIE_IF_ERROR(wp_index_add_entry(idx, entry, &doc_id));
       DIE_IF_ERROR(wp_index_add_label(idx, "inbox", doc_id));
       DIE_IF_ERROR(wp_entry_free(entry));
 
       // write the offset info
-      dummy_size = fwrite(&doc_id, sizeof(doc_id), 1, offsets);
-      if(dummy_size != sizeof(doc_id)) abort();
-      dummy_size = fwrite(&start_offset, sizeof(start_offset), 1, offsets);
-      if(dummy_size != sizeof(start_offset)) abort();
-      dummy_size = fwrite(&end_offset, sizeof(end_offset), 1, offsets);
-      if(dummy_size != sizeof(end_offset)) abort();
+      num_written = fwrite(&doc_id, sizeof(doc_id), 1, offsets);
+      if(num_written != 1) abort();
+      num_written = fwrite(&start_offset, sizeof(start_offset), 1, offsets);
+      if(num_written != 1) abort();
+      num_written = fwrite(&end_offset, sizeof(end_offset), 1, offsets);
+      if(num_written != 1) abort();
       //printf("doc %u is from %ld--%ld\n", doc_id, start_offset, end_offset);
     }
   }

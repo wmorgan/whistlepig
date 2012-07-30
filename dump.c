@@ -8,36 +8,38 @@
 #define isdel(flag, i) ((flag[i>>4]>>((i&0xfU)<<1))&1)
 #define KEY(h, i) &(h->pool[h->keys[i]])
 
-RAISING_STATIC(dump_postings_list(wp_segment* s, postings_list_header* plh)) {
+RAISING_STATIC(dump_postings_block(postings_region* pr, postings_block* block)) {
   posting po;
-  docid_t last_doc_id = 0;
-  int started = 0;
+  docid_t doc_id = block->max_docid;
 
+  uint32_t posting_offset = block->postings_head;
+
+  while(posting_offset < block->size) {
+    uint32_t next_posting_offset = OFFSET_NONE;
+    RELAY_ERROR(wp_text_postings_region_read_posting_from_block(pr, block, posting_offset, &next_posting_offset, &po, 1));
+    doc_id -= po.doc_id;
+
+    printf(" [%u] doc %u:", next_posting_offset - posting_offset, doc_id);
+    for(uint32_t i = 0; i < po.num_positions; i++) printf(" %d", po.positions[i]);
+    printf("\n");
+
+    posting_offset = next_posting_offset;
+    free(po.positions);
+  }
+
+  return NO_ERROR;
+}
+
+RAISING_STATIC(dump_postings_list(wp_segment* s, postings_list_header* plh)) {
+  printf("[postings list of %u entries]\n", plh->count);
   postings_region* pr = MMAP_OBJ(s->postings, postings_region);
 
   uint32_t block_offset = plh->next_offset;
-  printf("[%u entries]\n", plh->count);
-
   while(block_offset != OFFSET_NONE) {
     postings_block* block = wp_postings_block_at(pr, block_offset);
-    uint32_t posting_offset = block->postings_head;
+    printf("[block of %u bytes (%u = %.1f%% used) with docids between %u and %u]\n", block->size, block->size - block->postings_head, (float)(block->size - block->postings_head) / (float)block->size * 100.0, block->min_docid, block->max_docid);
 
-    while(posting_offset < block->size) {
-      uint32_t next_posting_offset = OFFSET_NONE;
-      RELAY_ERROR(wp_text_postings_region_read_posting_from_block(pr, block, posting_offset, &next_posting_offset, &po, 1));
-
-      printf("  [block %u] @%u doc %u:", block_offset, posting_offset, po.doc_id);
-      for(uint32_t i = 0; i < po.num_positions; i++) printf(" %d", po.positions[i]);
-
-      if((po.doc_id == 0) || (started && (po.doc_id >= last_doc_id))) printf(" <-- BROKEN");
-      started = 1;
-      last_doc_id = po.doc_id;
-      printf("\n");
-
-      posting_offset = next_posting_offset;
-      free(po.positions);
-    }
-
+    RELAY_ERROR(dump_postings_block(pr, block));
     block_offset = block->prev_block_offset;
   }
 
@@ -101,6 +103,8 @@ RAISING_STATIC(dump(wp_segment* segment)) {
         RELAY_ERROR(dump_postings_list(segment, &thvals[i]));
       }
     }
+
+    printf("\n");
   }
 
   return NO_ERROR;

@@ -3,16 +3,6 @@
 #include "error.h"
 #include "test.h"
 
-TEST(stringpool_initial_state) {
-  stringpool* p = malloc(stringpool_initial_size());
-  stringpool_init(p);
-
-  ASSERT(!stringpool_needs_bump(p));
-
-  free(p);
-  return NO_ERROR;
-}
-
 TEST(stringpool_add_gives_unique_ids) {
   stringpool* p = malloc(stringpool_initial_size());
   stringpool_init(p);
@@ -54,7 +44,7 @@ TEST(stringpool_detects_out_of_room) {
 
   uint32_t ret;
   int times = stringpool_initial_size() / 6;
-  for(int i = 0; i < times - 1; i++)  {
+  for(int i = 0; i < times; i++)  {
     ret = stringpool_add(p, "12345");
     ASSERT(ret != (uint32_t)-1);
   }
