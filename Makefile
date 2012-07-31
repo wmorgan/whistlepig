@@ -13,7 +13,7 @@ ECHO=/bin/echo
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 OPTIMIZATION?=-O3
 
-CFLAGS?= -std=c99 $(OPTIMIZATION) -Wall -Wextra -Wwrite-strings -Werror -Wpointer-arith -Wwrite-strings -Wno-missing-field-initializers -Wno-long-long -D_ANSI_SOURCE -D_XOPEN_SOURCE=600
+CFLAGS?= -std=c99 $(OPTIMIZATION) -Wall -Wextra -Wwrite-strings -Werror -Wpointer-arith -Wwrite-strings -Wno-missing-field-initializers -Wno-long-long -D_ANSI_SOURCE -D_XOPEN_SOURCE=600 #-pg
 
 ifeq ($(uname_S),Darwin)
 CFLAGS:=$(CFLAGS) -Wshorten-64-to-32

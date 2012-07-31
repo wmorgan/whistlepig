@@ -200,7 +200,7 @@ RAISING_STATIC(release_children(wp_query* q)) {
   return NO_ERROR;
 }
 
-static wp_error* label_init_search_state(wp_query* q, wp_segment* seg) {
+RAISING_STATIC(label_init_search_state(wp_query* q, wp_segment* seg)) {
   term t;
 
   stringmap* sh = MMAP_OBJ(seg->stringmap, stringmap);
@@ -233,7 +233,7 @@ static wp_error* label_init_search_state(wp_query* q, wp_segment* seg) {
   return NO_ERROR;
 }
 
-static wp_error* term_init_search_state(wp_query* q, wp_segment* seg) {
+RAISING_STATIC(term_init_search_state(wp_query* q, wp_segment* seg)) {
   term t;
 
   stringmap* sh = MMAP_OBJ(seg->stringmap, stringmap);
@@ -274,7 +274,7 @@ static wp_error* term_init_search_state(wp_query* q, wp_segment* seg) {
   return NO_ERROR;
 }
 
-static wp_error* term_release_search_state(wp_query* q) {
+RAISING_STATIC(term_release_search_state(wp_query* q)) {
   term_search_state* state = q->search_data;
   if(!state->done) free(state->posting.positions);
   free(state);
@@ -282,25 +282,25 @@ static wp_error* term_release_search_state(wp_query* q) {
   return NO_ERROR;
 }
 
-static wp_error* label_release_search_state(wp_query* q) {
+RAISING_STATIC(label_release_search_state(wp_query* q)) {
   label_search_state* state = q->search_data;
   free(state);
   RELAY_ERROR(release_children(q));
   return NO_ERROR;
 }
 
-static wp_error* conj_init_search_state(wp_query* q, wp_segment* s) {
+RAISING_STATIC(conj_init_search_state(wp_query* q, wp_segment* s)) {
   q->search_data = NULL; // no state needed
   RELAY_ERROR(init_children(q, s));
   return NO_ERROR;
 }
 
-static wp_error* conj_release_search_state(wp_query* q) {
+RAISING_STATIC(conj_release_search_state(wp_query* q)) {
   RELAY_ERROR(release_children(q));
   return NO_ERROR;
 }
 
-static wp_error* disj_init_search_state(wp_query* q, wp_segment* s) {
+RAISING_STATIC(disj_init_search_state(wp_query* q, wp_segment* s)) {
   disj_search_state* state = q->search_data = malloc(sizeof(disj_search_state));
   state->states = NULL;
   state->results = NULL;
@@ -309,7 +309,7 @@ static wp_error* disj_init_search_state(wp_query* q, wp_segment* s) {
   return NO_ERROR;
 }
 
-static wp_error* disj_release_search_state(wp_query* q) {
+RAISING_STATIC(disj_release_search_state(wp_query* q)) {
   disj_search_state* state = (disj_search_state*)q->search_data;
   if(state->states) {
     // free any remaining search results in the buffer
@@ -324,18 +324,18 @@ static wp_error* disj_release_search_state(wp_query* q) {
   return NO_ERROR;
 }
 
-static wp_error* phrase_init_search_state(wp_query* q, wp_segment* s) {
+RAISING_STATIC(phrase_init_search_state(wp_query* q, wp_segment* s)) {
   q->search_data = NULL; // no state needed
   RELAY_ERROR(init_children(q, s));
   return NO_ERROR;
 }
 
-static wp_error* phrase_release_search_state(wp_query* q) {
+RAISING_STATIC(phrase_release_search_state(wp_query* q)) {
   RELAY_ERROR(release_children(q));
   return NO_ERROR;
 }
 
-static wp_error* neg_init_search_state(wp_query* q, wp_segment* seg) {
+RAISING_STATIC(neg_init_search_state(wp_query* q, wp_segment* seg)) {
   if(q->num_children != 1) RAISE_ERROR("negations currently only operate on single children");
 
   RELAY_ERROR(wp_search_init_search_state(q->children, seg));
@@ -357,13 +357,13 @@ static wp_error* neg_init_search_state(wp_query* q, wp_segment* seg) {
   return NO_ERROR;
 }
 
-static wp_error* neg_release_search_state(wp_query* q) {
+RAISING_STATIC(neg_release_search_state(wp_query* q)) {
   RELAY_ERROR(wp_search_release_search_state(q->children));
   free(q->search_data);
   return NO_ERROR;
 }
 
-static wp_error* every_init_search_state(wp_query* q, wp_segment* seg) {
+RAISING_STATIC(every_init_search_state(wp_query* q, wp_segment* seg)) {
   q->search_data = malloc(sizeof(docid_t));
 
   segment_info* si = MMAP_OBJ(seg->seginfo, segment_info);
@@ -372,14 +372,14 @@ static wp_error* every_init_search_state(wp_query* q, wp_segment* seg) {
   return NO_ERROR;
 }
 
-static wp_error* every_release_search_state(wp_query* q) {
+RAISING_STATIC(every_release_search_state(wp_query* q)) {
   free(q->search_data);
   return NO_ERROR;
 }
 
 /********** search functions **********/
 
-static wp_error* label_next_doc(wp_query* q, wp_segment* seg, search_result* result, int* done) {
+RAISING_STATIC(label_next_doc(wp_query* q, wp_segment* seg, search_result* result, int* done)) {
   label_search_state* state = (label_search_state*)q->search_data;
 
   DEBUG("[%s:'%s'] before: started is %d, done is %d", q->field, q->word, state->started, state->done);
@@ -411,7 +411,7 @@ static wp_error* label_next_doc(wp_query* q, wp_segment* seg, search_result* res
   return NO_ERROR;
 }
 
-static wp_error* term_next_doc(wp_query* q, wp_segment* seg, search_result* result, int* done) {
+RAISING_STATIC(term_next_doc(wp_query* q, wp_segment* seg, search_result* result, int* done)) {
   term_search_state* state = (term_search_state*)q->search_data;
 
   DEBUG("[%s:'%s'] before: started is %d, done is %d", q->field, q->word, state->started, state->done);
@@ -461,7 +461,7 @@ static wp_error* term_next_doc(wp_query* q, wp_segment* seg, search_result* resu
   return NO_ERROR;
 }
 
-static wp_error* term_advance_to_doc(wp_query* q, wp_segment* seg, docid_t doc_id, search_result* result, int* found, int* done) {
+RAISING_STATIC(term_advance_to_doc(wp_query* q, wp_segment* seg, docid_t doc_id, search_result* result, int* found, int* done)) {
   term_search_state* state = (term_search_state*)q->search_data;
   DEBUG("[%s:'%s'] seeking through postings for doc %u", q->field, q->word, doc_id);
 
@@ -544,7 +544,7 @@ static wp_error* term_advance_to_doc(wp_query* q, wp_segment* seg, docid_t doc_i
   return NO_ERROR;
 }
 
-static wp_error* label_advance_to_doc(wp_query* q, wp_segment* seg, docid_t doc_id, search_result* result, int* found, int* done) {
+RAISING_STATIC(label_advance_to_doc(wp_query* q, wp_segment* seg, docid_t doc_id, search_result* result, int* found, int* done)) {
   label_search_state* state = (label_search_state*)q->search_data;
   DEBUG("[%s:'%s'] seeking through postings for doc %u", q->field, q->word, doc_id);
 
@@ -586,7 +586,7 @@ static wp_error* label_advance_to_doc(wp_query* q, wp_segment* seg, docid_t doc_
 // doesn't have the doc, and done=1 if any single child is done.
 //
 // this is used by both phrasal and conjunctive queries.
-static wp_error* advance_all_children(wp_query* q, wp_segment* seg, docid_t search_doc, search_result* child_results, int* found, int* done) {
+RAISING_STATIC(advance_all_children(wp_query* q, wp_segment* seg, docid_t search_doc, search_result* child_results, int* found, int* done)) {
   int num_children_searched = 0;
   *found = 1;
 
@@ -603,7 +603,7 @@ static wp_error* advance_all_children(wp_query* q, wp_segment* seg, docid_t sear
   return NO_ERROR;
 }
 
-static wp_error* disj_next_doc(wp_query* q, wp_segment* seg, search_result* result, int* done) {
+RAISING_STATIC(disj_next_doc(wp_query* q, wp_segment* seg, search_result* result, int* done)) {
   if(q->children == NULL) {
     *done = 1;
     return NO_ERROR;
@@ -668,14 +668,95 @@ static wp_error* disj_next_doc(wp_query* q, wp_segment* seg, search_result* resu
   return NO_ERROR;
 }
 
-static wp_error* conj_next_doc(wp_query* q, wp_segment* seg, search_result* result, int* done) {
+RAISING_STATIC(estimate_query_cost(wp_query* q, wp_segment* seg, uint32_t* cost)) {
+  term t;
+
+  stringmap* sh = MMAP_OBJ(seg->stringmap, stringmap);
+  termhash* th = MMAP_OBJ(seg->termhash, termhash);
+  stringpool* sp = MMAP_OBJ(seg->stringpool, stringpool);
+  segment_info* si = MMAP_OBJ(seg->seginfo, segment_info);
+
+  *cost = 0;
+  switch(q->type) {
+
+  case WP_QUERY_TERM: // calc from count
+  case WP_QUERY_LABEL:
+    if(q->type == WP_QUERY_TERM) t.field_s = stringmap_string_to_int(sh, sp, q->field);
+    else t.field_s = 0;
+    t.word_s = stringmap_string_to_int(sh, sp, q->word);
+    postings_list_header* plh = termhash_get_val(th, t);
+    if(plh != NULL) *cost = plh->count;
+    break;
+
+  case WP_QUERY_EMPTY: break; // do nothing
+
+  case WP_QUERY_PHRASE:
+  case WP_QUERY_CONJ: // find min
+   if(q->num_children > 0) {
+     *cost = (uint32_t)-1; // max value
+     for(wp_query* child = q->children; child != NULL; child = child->next) {
+       uint32_t child_cost;
+       RELAY_ERROR(estimate_query_cost(child, seg, &child_cost));
+       if(child_cost < *cost) *cost = child_cost;
+     }
+   }
+   break;
+
+  case WP_QUERY_DISJ: // find max
+   for(wp_query* child = q->children; child != NULL; child = child->next) {
+     uint32_t child_cost;
+     RELAY_ERROR(estimate_query_cost(child, seg, &child_cost));
+     if(child_cost > *cost) *cost = child_cost;
+   }
+   break;
+
+  case WP_QUERY_NEG: {
+   uint32_t child_cost;
+   RELAY_ERROR(estimate_query_cost(q->children, seg, &child_cost));
+   *cost = si->num_docs - child_cost;
+   break;
+  }
+
+  case WP_QUERY_EVERY:
+   *cost = si->num_docs;
+  }
+
+
+  /*
+  char buf[1024];
+  wp_query_to_s(q, 1024, buf);
+  printf("[%u]: %s\n", *cost, buf);
+  */
+
+  return NO_ERROR;
+}
+
+RAISING_STATIC(find_smallest_child(wp_query* q, wp_segment* seg, wp_query** smallest)) {
+  uint32_t smallest_cost = (uint32_t)-1;
+
+  *smallest = NULL;
+  for(wp_query* child = q->children; child != NULL; child = child->next) {
+    uint32_t cost;
+    RELAY_ERROR(estimate_query_cost(child, seg, &cost));
+    if(cost < smallest_cost) {
+      *smallest = child;
+      smallest_cost = cost;
+    }
+  }
+
+  return NO_ERROR;
+}
+
+RAISING_STATIC(conj_next_doc(wp_query* q, wp_segment* seg, search_result* result, int* done)) {
   docid_t search_doc;
   int found = 0;
   *done = 0;
 
   // start with the first child's first doc
   // TODO: find smallest postings list and use that instead
-  wp_query* master = q->children;
+  wp_query* master = NULL;
+  RELAY_ERROR(find_smallest_child(q, seg, &master));
+
   if(master == NULL) *done = 1;
 
   while(!found && !*done) {
@@ -692,7 +773,7 @@ static wp_error* conj_next_doc(wp_query* q, wp_segment* seg, search_result* resu
   return NO_ERROR;
 }
 
-static wp_error* conj_advance_to_doc(wp_query* q, wp_segment* s, docid_t doc_id, search_result* result, int* found, int* done) {
+RAISING_STATIC(conj_advance_to_doc(wp_query* q, wp_segment* s, docid_t doc_id, search_result* result, int* found, int* done)) {
   search_result* child_results = malloc(sizeof(search_result) * q->num_children);
   RELAY_ERROR(advance_all_children(q, s, doc_id, child_results, found, done));
 
@@ -705,7 +786,7 @@ static wp_error* conj_advance_to_doc(wp_query* q, wp_segment* s, docid_t doc_id,
   return NO_ERROR;
 }
 
-static wp_error* disj_advance_to_doc(wp_query* q, wp_segment* seg, docid_t doc_id, search_result* result, int* found, int* done) {
+RAISING_STATIC(disj_advance_to_doc(wp_query* q, wp_segment* seg, docid_t doc_id, search_result* result, int* found, int* done)) {
   search_result child_result;
   int child_found;
 
@@ -751,7 +832,7 @@ static wp_error* disj_advance_to_doc(wp_query* q, wp_segment* seg, docid_t doc_i
 
 // sadly, this is basically a copy of conj_next_doc right now. all the
 // interesting phrasal checking is done by phrase_advance_to_doc.
-static wp_error* phrase_next_doc(wp_query* q, wp_segment* seg, search_result* result, int* done) {
+RAISING_STATIC(phrase_next_doc(wp_query* q, wp_segment* seg, search_result* result, int* done)) {
 #ifdef DEBUGOUTPUT
   char query_s[1024];
   wp_query_to_s(q, 1024, query_s);
@@ -764,7 +845,8 @@ static wp_error* phrase_next_doc(wp_query* q, wp_segment* seg, search_result* re
 
   // start with the first child's first doc
   // TODO: find smallest postings list and use that instead
-  wp_query* master = q->children;
+  wp_query* master = NULL;
+  RELAY_ERROR(find_smallest_child(q, seg, &master));
   if(master == NULL) *done = 1;
 
   while(!found && !*done) {
@@ -781,7 +863,7 @@ static wp_error* phrase_next_doc(wp_query* q, wp_segment* seg, search_result* re
   return NO_ERROR;
 }
 
-static wp_error* phrase_advance_to_doc(wp_query* q, wp_segment* seg, docid_t doc_id, search_result* result, int* found, int* done) {
+RAISING_STATIC(phrase_advance_to_doc(wp_query* q, wp_segment* seg, docid_t doc_id, search_result* result, int* found, int* done)) {
 #ifdef DEBUGOUTPUT
   char query_s[1024];
   wp_query_to_s(q, 1024, query_s);
@@ -868,7 +950,7 @@ static wp_error* phrase_advance_to_doc(wp_query* q, wp_segment* seg, docid_t doc
   return NO_ERROR;
 }
 
-static wp_error* neg_next_doc(wp_query* q, wp_segment* seg, search_result* result, int* done) {
+RAISING_STATIC(neg_next_doc(wp_query* q, wp_segment* seg, search_result* result, int* done)) {
   neg_search_state* state = (neg_search_state*)q->search_data;
 
   DEBUG("called with cur %u and next %u", state->cur, state->next);
@@ -910,7 +992,7 @@ static wp_error* neg_next_doc(wp_query* q, wp_segment* seg, search_result* resul
   return NO_ERROR;
 }
 
-static wp_error* neg_advance_to_doc(wp_query* q, wp_segment* seg, docid_t doc_id, search_result* result, int* found, int* done) {
+RAISING_STATIC(neg_advance_to_doc(wp_query* q, wp_segment* seg, docid_t doc_id, search_result* result, int* found, int* done)) {
   neg_search_state* state = (neg_search_state*)q->search_data;
 
   DEBUG("in search for %u, called with cur %u and next %u", doc_id, state->cur, state->next);
@@ -947,7 +1029,7 @@ static wp_error* neg_advance_to_doc(wp_query* q, wp_segment* seg, docid_t doc_id
   return NO_ERROR;
 }
 
-static wp_error* every_next_doc(wp_query* q, wp_segment* seg, search_result* result, int* done) {
+RAISING_STATIC(every_next_doc(wp_query* q, wp_segment* seg, search_result* result, int* done)) {
   (void)seg; // don't actually need to look in here!
   docid_t* state_doc_id = (docid_t*)q->search_data;
 
@@ -966,7 +1048,7 @@ static wp_error* every_next_doc(wp_query* q, wp_segment* seg, search_result* res
   return NO_ERROR;
 }
 
-static wp_error* every_advance_to_doc(wp_query* q, wp_segment* seg, docid_t doc_id, search_result* result, int* found, int* done) {
+RAISING_STATIC(every_advance_to_doc(wp_query* q, wp_segment* seg, docid_t doc_id, search_result* result, int* found, int* done)) {
   (void)seg; // don't actually need to look in here!
   docid_t* state_doc_id = q->search_data;
 

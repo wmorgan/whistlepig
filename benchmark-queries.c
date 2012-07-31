@@ -61,9 +61,11 @@ int main(int argc, char* argv[]) {
         wp_query_to_s(queries[i], MAX_LINE_LENGTH, buf);
         printf("%10.1f qps: %s\n", (float)num_iters / (float)per_query_times[i] * 1000.0, buf);
       }
-      printf("overall, ran %u queries in %.1fs = %.1f qps\n\n", num_queries * num_iters, (float)TIMER_MS(total) / 1000.0, (float)(num_queries * num_iters) / (float)TIMER_MS(total) * 1000.0);
+      printf("overall, ran %u queries in %.1fs = %.1f qps\n\n", num_iters, (float)TIMER_MS(total) / 1000.0, (float)(num_queries * num_iters) / (float)TIMER_MS(total) * 1000.0);
       RESET_TIMER(chunk);
     }
+
+    if(num_iters >= 500) break;
   }
 
   DIE_IF_ERROR(wp_index_unload(index));
