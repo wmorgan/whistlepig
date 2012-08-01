@@ -32,6 +32,7 @@ typedef struct segment_info {
 
 // a segment is a bunch of all these things
 typedef struct wp_segment {
+  uint8_t idx;
   mmap_obj seginfo;
   mmap_obj stringmap;
   mmap_obj stringpool;

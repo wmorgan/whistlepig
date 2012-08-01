@@ -84,6 +84,7 @@ wp_error* wp_index_create(wp_index** indexptr, const char* pathname_base) {
 
   snprintf(buf, PATH_BUF_SIZE, "%s0", pathname_base);
   RELAY_ERROR(wp_segment_create(&index->segments[0], buf));
+  index->segments[0].idx = 0;
   index->docid_offsets[0] = 0;
   index->num_segments = 1;
 
@@ -127,6 +128,7 @@ RAISING_STATIC(ensure_all_segments(wp_index* index)) {
     snprintf(buf, PATH_BUF_SIZE, "%s%u", index->pathname_base, i);
     DEBUG("trying to loading segment %u from %s", i, buf);
     RELAY_ERROR(wp_segment_load(&index->segments[i], buf));
+    index->segments[i].idx = i;
 
     if(i == 0) index->docid_offsets[i] = 0;
     else {

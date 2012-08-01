@@ -228,7 +228,7 @@ RAISING_STATIC(bump_stringpool(wp_segment* s, uint32_t additional_bytes)) {
   return NO_ERROR;
 }
 
-RAISING_STATIC(bump_postings_region(mmap_obj* mmopr, uint32_t additional_bytes)) {
+RAISING_STATIC(bump_postings_region(wp_segment* s, mmap_obj* mmopr, uint32_t additional_bytes)) {
   postings_region* pr = MMAP_OBJ_PTR(mmopr, postings_region);
   uint32_t min_size = pr->postings_head + additional_bytes;
 
@@ -239,7 +239,7 @@ RAISING_STATIC(bump_postings_region(mmap_obj* mmopr, uint32_t additional_bytes))
   DEBUG("new tail will be %u, current is %u, max is %u", new_tail, pr->postings_tail, MAX_POSTINGS_REGION_SIZE);
 
   // can't increase enough! need to make a new segment.
-  if(new_tail <= min_size) RAISE_RESIZE_ERROR(RESIZE_ERROR_SEGMENT, 1);
+  if(new_tail <= min_size) RAISE_RESIZE_ERROR(RESIZE_ERROR_SEGMENT, s->idx);
 
   if(new_tail != pr->postings_tail) { // need to resize
     RELAY_ERROR(mmap_obj_resize(mmopr, new_tail));
@@ -318,7 +318,7 @@ retry:
       wp_resize_error_data* data = (wp_resize_error_data*)e->data;
 
       DEBUG("postings region resize signal. resizing...");
-      RELAY_ERROR(bump_postings_region(&s->postings, data->size));
+      RELAY_ERROR(bump_postings_region(s, &s->postings, data->size));
       wp_error_free(e);
 
       DEBUG("postings region resize signal. retrying...");
@@ -379,7 +379,7 @@ retry:
       wp_resize_error_data* data = (wp_resize_error_data*)e->data;
 
       DEBUG("postings region resize signal. resizing...");
-      RELAY_ERROR(bump_postings_region(&s->labels, data->size));
+      RELAY_ERROR(bump_postings_region(s, &s->labels, data->size));
       wp_error_free(e);
 
       DEBUG("postings region resize signal. retrying...");
