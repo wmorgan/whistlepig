@@ -189,7 +189,7 @@ RAISING_STATIC(add_posting_to_block(postings_block* block, posting* po)) {
 }
 
 #define MIN_BLOCK_SIZE 32
-#define MAX_BLOCK_SIZE 64
+#define MAX_BLOCK_SIZE 64 // a soft max--will be exceeded if we need to for a particular posting
 RAISING_STATIC(build_new_block(postings_region* pr, uint32_t min_size, uint32_t old_offset, uint32_t* new_offset)) {
   DEBUG("going to make a new block to hold %u bytes", min_size);
 
@@ -203,6 +203,7 @@ RAISING_STATIC(build_new_block(postings_region* pr, uint32_t min_size, uint32_t 
   uint32_t new_size = MIN_BLOCK_SIZE;
   while(new_size < min_size) new_size *= 2;
   if(new_size > MAX_BLOCK_SIZE) new_size = MAX_BLOCK_SIZE;
+  if(new_size < min_size) new_size = min_size;
 
   DEBUG("going to make a new block of %u + %zu = %zu bytes", new_size, sizeof(postings_block), new_size + sizeof(postings_block));
   new_size += sizeof(postings_block);
@@ -217,7 +218,7 @@ RAISING_STATIC(build_new_block(postings_region* pr, uint32_t min_size, uint32_t 
   *new_offset = pr->postings_head;
   pr->postings_head += new_size;
 
-  DEBUG("new block is at offset %u and will have %lu bytes for postings", *new_offset, new_size - sizeof(postings_block));
+  DEBUG("new block is at offset %u and will have %u bytes for postings", *new_offset, new_size - sizeof(postings_block));
   postings_block* block = wp_postings_block_at(pr, *new_offset);
   block->prev_block_offset = old_offset;
   block->size = new_size - sizeof(postings_block);

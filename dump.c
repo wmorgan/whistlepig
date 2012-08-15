@@ -82,7 +82,7 @@ RAISING_STATIC(dump(wp_segment* segment)) {
 
   for(uint32_t i = 0; i < th->n_buckets; i++) {
     if(isempty(thflags, i)); // do nothing
-    else if(isdel(thflags, i)) printf("%u: [deleted]", i);
+    else if(isdel(thflags, i)) printf("%u: [deleted]\n", i);
     else {
       term t = thkeys[i];
 
@@ -102,9 +102,8 @@ RAISING_STATIC(dump(wp_segment* segment)) {
         printf("%u: %s:'%s'\n", i, field, word);
         RELAY_ERROR(dump_postings_list(segment, &thvals[i]));
       }
+      printf("\n");
     }
-
-    printf("\n");
   }
 
   return NO_ERROR;

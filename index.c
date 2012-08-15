@@ -300,57 +300,47 @@ wp_error* wp_index_teardown_query(wp_index* index, wp_query* query) {
   return NO_ERROR;
 }
 
-// helper function that grabs a writelock on the last segment, and ensures that
-// the entry can fit there. otherwise it makes a new segment and grabs the
-// writelock on that.
-//
-// assumes we have a writelock on the index object here, so that no one can add
-// segments while we're doing this stuff.
-/*
-RAISING_STATIC(get_and_writelock_last_segment(wp_index* index, wp_segment** returned_seg)) {
-  int success;
+// helper function that makes a new segment unless a new one has just been made.
+// either way it grabs the segmet writelock before returning.
+RAISING_STATIC(make_and_lock_new_segment(wp_index* index, wp_segment* old_seg, wp_segment** returned_seg)) {
+  RELAY_ERROR(grab_writelock(index)); // grab full-index lock
   RELAY_ERROR(ensure_all_segments(index)); // make sure we know about all segments
-  wp_segment* seg = &index->segments[index->num_segments - 1]; // get last segment
-  RELAY_ERROR(wp_segment_grab_writelock(seg)); // grab the writelock
+  wp_segment* last_seg = &index->segments[index->num_segments - 1]; // pick the last one
 
-  // if we can fit in there, then return it! (still locked)
-  if(success) {
-    *returned_seg = seg;
-    return NO_ERROR;
+  if(last_seg->idx != old_seg->idx) { // someone else has made a new one in the mean time. we'll just return this one.
+    *returned_seg = last_seg;
+  }
+  else { // otherwise let's make a new one
+    char buf[PATH_BUF_SIZE];
+    DEBUG("segment %d is full, loading a new one", index->num_segments - 1);
+    snprintf(buf, PATH_BUF_SIZE, "%s%d", index->pathname_base, index->num_segments);
+
+    // increase the two counters
+    index_info* ii = MMAP_OBJ(index->indexinfo, index_info);
+    ii->num_segments++;
+    index->num_segments++;
+
+    // make sure we have a pointer for this guy
+    RELAY_ERROR(ensure_segment_pointer_fit(index));
+
+    // create the new segment
+    RELAY_ERROR(wp_segment_create(&index->segments[index->num_segments - 1], buf));
+
+    // set the docid_offset
+    segment_info* prevsi = MMAP_OBJ(index->segments[index->num_segments - 2].seginfo, segment_info);
+    index->docid_offsets[index->num_segments - 1] = prevsi->num_docs + index->docid_offsets[index->num_segments - 2];
+
+    printf("; make new segment %u with docid %"PRIu64"\n", index->num_segments, index->docid_offsets[index->num_segments - 1]);
+    // done
+    *returned_seg = &index->segments[index->num_segments - 1];
   }
 
-  // otherwise, unlock it and let's make a new one
-  RELAY_ERROR(wp_segment_release_lock(seg));
+  RELAY_ERROR(wp_segment_grab_writelock(*returned_seg)); // lock it
+  RELAY_ERROR(wp_segment_reload(*returned_seg)); // for good luck--don't think this is strictly necessary
+  RELAY_ERROR(release_lock(index)); // release full-index lock
 
-  char buf[PATH_BUF_SIZE];
-  DEBUG("segment %d is full, loading a new one", index->num_segments - 1);
-  snprintf(buf, PATH_BUF_SIZE, "%s%d", index->pathname_base, index->num_segments);
-
-  // increase the two counters
-  index_info* ii = MMAP_OBJ(index->indexinfo, index_info);
-  ii->num_segments++;
-  index->num_segments++;
-
-  // make sure we have a pointer for this guy
-  RELAY_ERROR(ensure_segment_pointer_fit(index));
-
-  // create the new segment
-  RELAY_ERROR(wp_segment_create(&index->segments[index->num_segments - 1], buf));
-
-  // set the docid_offset
-  segment_info* prevsi = MMAP_OBJ(index->segments[index->num_segments - 2].seginfo, segment_info);
-  index->docid_offsets[index->num_segments - 1] = prevsi->num_docs + index->docid_offsets[index->num_segments - 2];
-
-  seg = &index->segments[index->num_segments - 1];
-  DEBUG("loaded new segment %d at %p", index->num_segments - 1, seg);
-
-  RELAY_ERROR(wp_segment_grab_writelock(seg)); // lock it
-  if(!success) RAISE_ERROR("can't fit new entry into fresh segment. that's crazy");
-
-  *returned_seg = seg;
   return NO_ERROR;
 }
-*/
 
 wp_error* wp_index_add_entry(wp_index* index, wp_entry* entry, uint64_t* doc_id) {
   docid_t seg_doc_id;
@@ -360,10 +350,26 @@ wp_error* wp_index_add_entry(wp_index* index, wp_entry* entry, uint64_t* doc_id)
   wp_segment* seg = &index->segments[index->num_segments - 1]; // get last segment
   RELAY_ERROR(wp_segment_grab_writelock(seg)); // grab the writelock
   RELAY_ERROR(release_lock(index)); // release full-index lock
-
   RELAY_ERROR(wp_segment_reload(seg));
+
+  wp_error* e = NULL;
+retry:
+
   RELAY_ERROR(wp_segment_grab_docid(seg, &seg_doc_id));
-  RELAY_ERROR(wp_entry_write_to_segment(entry, seg, seg_doc_id));
+  printf("adding doc %"PRIu64" = %u + %"PRIu64" (seg %u)\n", seg_doc_id + index->docid_offsets[index->num_segments - 1], seg_doc_id, index->docid_offsets[index->num_segments - 1], seg->idx);
+  e = wp_entry_write_to_segment(entry, seg, seg_doc_id);
+  if(e) {
+    if(e->type == WP_ERROR_TYPE_RESIZE) {
+      DEBUG("segment resize signal. resizing...");
+      RELAY_ERROR(wp_segment_release_lock(seg));
+      wp_error_free(e);
+      RELAY_ERROR(make_and_lock_new_segment(index, seg, &seg));
+      DEBUG("segment resize signal. retrying...");
+      goto retry;
+    }
+    else RELAY_ERROR(e);
+  }
+
   RELAY_ERROR(wp_segment_release_lock(seg));
   *doc_id = seg_doc_id + index->docid_offsets[index->num_segments - 1];
 
