@@ -211,6 +211,9 @@ integration-tests/enron1m.index0.pr: integration-tests/enron1m.mbox $(MBOXADDBIN
 test-integration: batch-run-queries integration-tests/enron1m.index0.pr
 	ruby integration-tests/eval.rb integration-tests/testset1.txt
 
+benchmark: benchmark-queries integration-tests/enron1m.index0.pr
+	./benchmark-queries integration-tests/enron1m.index integration-tests/testset1.txt
+
 debug:
 	+make DEBUGOUTPUT=-DDEBUGOUTPUT
 

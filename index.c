@@ -356,7 +356,7 @@ wp_error* wp_index_add_entry(wp_index* index, wp_entry* entry, uint64_t* doc_id)
 retry:
 
   RELAY_ERROR(wp_segment_grab_docid(seg, &seg_doc_id));
-  printf("adding doc %"PRIu64" = %u + %"PRIu64" (seg %u)\n", seg_doc_id + index->docid_offsets[index->num_segments - 1], seg_doc_id, index->docid_offsets[index->num_segments - 1], seg->idx);
+  //printf("adding doc %"PRIu64" = %u + %"PRIu64" (seg %u)\n", seg_doc_id + index->docid_offsets[index->num_segments - 1], seg_doc_id, index->docid_offsets[index->num_segments - 1], seg->idx);
   e = wp_entry_write_to_segment(entry, seg, seg_doc_id);
   if(e) {
     if(e->type == WP_ERROR_TYPE_RESIZE) {

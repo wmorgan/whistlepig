@@ -189,21 +189,25 @@ RAISING_STATIC(add_posting_to_block(postings_block* block, posting* po)) {
 }
 
 #define MIN_BLOCK_SIZE 32
-#define MAX_BLOCK_SIZE 64 // a soft max--will be exceeded if we need to for a particular posting
+#define SOFT_MAX_BLOCK_SIZE 128 // this seems to wrok the best -- but tweak me!
+#define HARD_MAX_BLOCK_SIZE ((64 * 1024) - sizeof(postings_block)) // can never be exceeded
 RAISING_STATIC(build_new_block(postings_region* pr, uint32_t min_size, uint32_t old_offset, uint32_t* new_offset)) {
   DEBUG("going to make a new block to hold %u bytes", min_size);
+  if(min_size < 1) RAISE_ERROR("min_size is %d", min_size); // sanity check
+
+  uint32_t new_size = MIN_BLOCK_SIZE;
 
   // bump up size to be greater than the previous block, if any
   if(old_offset != OFFSET_NONE) {
     postings_block* old_block = wp_postings_block_at(pr, old_offset);
-    if(old_block->size > min_size) min_size = old_block->size + 1;
     DEBUG("previous block for this posting is %u bytes", old_block->size);
+    new_size = old_block->size * 2;
   }
 
-  uint32_t new_size = MIN_BLOCK_SIZE;
   while(new_size < min_size) new_size *= 2;
-  if(new_size > MAX_BLOCK_SIZE) new_size = MAX_BLOCK_SIZE;
+  if(new_size > SOFT_MAX_BLOCK_SIZE) new_size = SOFT_MAX_BLOCK_SIZE;
   if(new_size < min_size) new_size = min_size;
+  if(new_size > HARD_MAX_BLOCK_SIZE) RAISE_ERROR("posting is too big to be represented: %d => %d", min_size, new_size);
 
   DEBUG("going to make a new block of %u + %zu = %zu bytes", new_size, sizeof(postings_block), new_size + sizeof(postings_block));
   new_size += sizeof(postings_block);

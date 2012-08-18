@@ -98,9 +98,7 @@ int main(int argc, char* argv[]) {
       size_t num_written;
       uint64_t doc_id;
       DIE_IF_ERROR(wp_index_add_entry(idx, entry, &doc_id));
-      printf(">> added doc %"PRIu64"\n", doc_id);
       DIE_IF_ERROR(wp_index_add_label(idx, "inbox", doc_id));
-      printf(">> labeled doc %"PRIu64"\n", doc_id);
       DIE_IF_ERROR(wp_entry_free(entry));
 
       // write the offset info

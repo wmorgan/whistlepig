@@ -2,6 +2,7 @@
 #include "whistlepig.h"
 #include "timer.h"
 
+#define MAX_ITERS 5000
 #define MAX_LINE_LENGTH 1024
 #define NUM_RESULTS_PER_QUERY 10
 
@@ -35,16 +36,16 @@ int main(int argc, char* argv[]) {
 
   uint64_t results[NUM_RESULTS_PER_QUERY];
   uint32_t num_results_found;
-  uint32_t num_iters = 0;
   uint64_t* per_query_times = calloc(num_queries, sizeof(uint64_t));
   for(int i = 0; i < num_queries; i++) per_query_times[i] = 0;
 
   DIE_IF_ERROR(wp_index_load(&index, argv[1]));
 
+  printf("benchmarking...\n");
+
   START_TIMER(total);
   START_TIMER(chunk);
-  while(1) {
-    num_iters++;
+  for(uint32_t num_iters = 0; num_iters < MAX_ITERS; num_iters++) {
     for(int i = 0; i < num_queries; i++) {
       START_TIMER(query);
       DIE_IF_ERROR(wp_index_setup_query(index, queries[i]));
@@ -56,17 +57,24 @@ int main(int argc, char* argv[]) {
 
     MARK_TIMER(total);
     MARK_TIMER(chunk);
-    if(TIMER_MS(chunk) > 1000) {
+    if(TIMER_MS(chunk) > 5000) {
       for(int i = 0; i < num_queries; i++) {
         wp_query_to_s(queries[i], MAX_LINE_LENGTH, buf);
         printf("%10.1f qps: %s\n", (float)num_iters / (float)per_query_times[i] * 1000.0, buf);
       }
-      printf("overall, ran %u queries in %.1fs = %.1f qps\n\n", num_iters, (float)TIMER_MS(total) / 1000.0, (float)(num_queries * num_iters) / (float)TIMER_MS(total) * 1000.0);
+      printf("ran %u queries in %.1fs = %.1f qps\n\n", num_iters, (float)TIMER_MS(total) / 1000.0, (float)(num_queries * num_iters) / (float)TIMER_MS(total) * 1000.0);
       RESET_TIMER(chunk);
     }
-
-    if(num_iters >= 500) break;
   }
+
+  printf("\nFinal results over %u iterations:\n", MAX_ITERS);
+  MARK_TIMER(total);
+  for(int i = 0; i < num_queries; i++) {
+    wp_query_to_s(queries[i], MAX_LINE_LENGTH, buf);
+    printf("%10.1f qps: %s\n", (float)MAX_ITERS / (float)per_query_times[i] * 1000.0, buf);
+  }
+  printf("ran %u queries in %.1fs = %.1f qps\n\n", MAX_ITERS, (float)TIMER_MS(total) / 1000.0, (float)(num_queries * MAX_ITERS) / (float)TIMER_MS(total) * 1000.0);
+
 
   DIE_IF_ERROR(wp_index_unload(index));
 
