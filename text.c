@@ -12,7 +12,7 @@ wp_error* wp_text_postings_region_validate(postings_region* pr) {
 
 #define VALUE_BITMASK 0x7f
 
-static uint32_t sizeof_uint32_vbe(uint32_t val) {
+static inline uint32_t sizeof_uint32_vbe(uint32_t val) {
   uint32_t size = 1;
 
   while(val > VALUE_BITMASK) {
@@ -61,18 +61,22 @@ RAISING_STATIC(read_uint32_vbe(uint8_t* location, uint32_t* val, uint32_t* size)
   return NO_ERROR;
 }
 
-// calculate the size of a posting
-static uint32_t sizeof_posting(posting* po) {
+static inline uint32_t sizeof_poslist(posting* po) {
   uint32_t size = 0;
-
-  uint32_t doc_id = po->doc_id << 1;
-  if(po->num_positions == 1) doc_id |= 1; // marker for single postings
-  size += sizeof_uint32_vbe(po->doc_id);
-
-  if(po->num_positions > 1) size += sizeof_uint32_vbe(po->num_positions);
   for(uint32_t i = 0; i < po->num_positions; i++) size += sizeof_uint32_vbe(po->positions[i] - (i == 0 ? 0 : po->positions[i - 1]));
-
   return size;
+}
+
+// calculate the size of a posting
+static inline uint32_t sizeof_posting(posting* po) {
+  uint32_t size = 0;
+  uint32_t doc_id = po->doc_id << 1;
+  uint32_t poslist_size = sizeof_poslist(po);
+
+  if(poslist_size == 1) doc_id |= 1; // marker for single-byte-position-list postings
+  else size = sizeof_uint32_vbe(poslist_size);
+
+  return size + poslist_size + sizeof_uint32_vbe(doc_id);
 }
 
 // write an encoded posting to a region of memory
@@ -82,18 +86,20 @@ RAISING_STATIC(write_posting(posting* po, uint8_t* target, uint32_t* total_size)
 
   //printf("  writing posting %u with %u positions to %p\n", po->doc_id, po->num_positions, start);
 
+  uint32_t poslist_size = sizeof_poslist(po);
   uint32_t doc_id = po->doc_id << 1;
-  if(po->num_positions == 1) doc_id |= 1; // marker for single postings
+  if(poslist_size == 1) doc_id |= 1; // marker for single-byte-poslist postings
+
   //printf("  writing doc_id %u encoded as %u\n", po->doc_id, doc_id);
   RELAY_ERROR(write_uint32_vbe(target, doc_id, &size));
   target += size;
   //printf("  wrote %u-byte doc_id %u\n", size, doc_id);
 
-  if(po->num_positions > 1) {
-    //printf("  writing num_positions %u\n", po->num_positions);
-    RELAY_ERROR(write_uint32_vbe(target, po->num_positions, &size));
+  if(poslist_size > 1) {
+    //printf("  writing poslist_size %u\n", poslist_size);
+    RELAY_ERROR(write_uint32_vbe(target, poslist_size, &size));
     target += size;
-    //printf("  wrote %u-byte num positions %u\n", size, po->num_positions);
+    //printf("  wrote %u-byte postlist_size %u\n", size, poslist_size);
   }
 
   for(uint32_t i = 0; i < po->num_positions; i++) {
@@ -138,7 +144,7 @@ RAISING_STATIC(add_posting_to_block(postings_block* block, posting* po)) {
 
     uint32_t size;
     RELAY_ERROR(write_posting(&zeroed_posting, &block->data[block->postings_head], &size));
-    if(size != cur_posting_size) RAISE_ERROR("size mismatch"); // sanity check
+    if(size != cur_posting_size) RAISE_ERROR("size mismatch: %u vs %u", size, cur_posting_size); // sanity check
   }
   else {
     DEBUG("going to add an additional posting to this block");
@@ -148,12 +154,11 @@ RAISING_STATIC(add_posting_to_block(postings_block* block, posting* po)) {
     // calculate size of posting + rewritten docid.
     // format will be:
     // - cur_docid (encoded as 0 since it's delta max_docid, which will be updated to be this value)
-    // - if # positions > 1
-    // -   # positions
-    // -   positions, delta-encoded
+    // - if poslist_size > 1, the poslist_size
+    // - the positions, delta-encoded
     // - old cur_docid, re-encoded as delta cur_docid (currently 0, delta the old max_docid)
 
-    // a little extra logic to handle the single-posting trick
+    // a little extra logic to handle the single-poslist-byte trick
     int prev_docid_is_single = block->data[block->postings_head] & 1;
     DEBUG("prev docid is single: %u", prev_docid_is_single);
 
@@ -306,26 +311,35 @@ wp_error* wp_text_postings_region_read_posting_from_block(postings_region* pr, p
   DEBUG("read doc_id %u (%u bytes)", po->doc_id, size);
   offset += size;
 
-  if(include_positions) {
-    if(is_single_posting) po->num_positions = 1;
-    else {
-      RELAY_ERROR(read_uint32_vbe(&block->data[offset], &po->num_positions, &size));
-      DEBUG("read num_positions: %u (%u bytes)", po->num_positions, size);
-      offset += size;
-    }
+  // get size of position list
+  uint32_t poslist_size = 0;
+  if(is_single_posting) poslist_size = 1;
+  else {
+    RELAY_ERROR(read_uint32_vbe(&block->data[offset], &poslist_size, &size));
+    DEBUG("read poslist_size: %u (%u bytes)", poslist_size, size);
+    offset += size;
+  }
 
-    po->positions = malloc(po->num_positions * sizeof(pos_t));
+  if(include_positions) { // read the position list in
+    // the number of bytes in the position list is the upper bound on the number
+    // of positions, so we'll allocate that many.
+    po->positions = malloc(poslist_size * sizeof(pos_t));
+    po->num_positions = 0;
 
-    for(uint32_t i = 0; i < po->num_positions; i++) {
-      RELAY_ERROR(read_uint32_vbe(&block->data[offset], &po->positions[i], &size));
+    // now let's read them in
+    while(poslist_size > 0) {
+      RELAY_ERROR(read_uint32_vbe(&block->data[offset], &po->positions[po->num_positions], &size));
       offset += size;
-      po->positions[i] += (i == 0 ? 0 : po->positions[i - 1]);
-      DEBUG("read position %u (%u bytes)", po->positions[i], size);
+      po->positions[po->num_positions] += (po->num_positions == 0 ? 0 : po->positions[po->num_positions - 1]);
+      DEBUG("read position %u (%u bytes)", po->positions[po->num_positions], size);
+      po->num_positions++;
+      poslist_size -= size;
     }
   }
   else {
     po->num_positions = 0;
     po->positions = NULL;
+    offset += poslist_size;
   }
 
   *next_offset = offset;
