@@ -14,6 +14,7 @@ typedef struct label_search_state {
 typedef struct term_search_state {
   posting posting;
   uint32_t docid_delta;
+  uint32_t posting_offset;
   uint32_t next_posting_offset;
   uint32_t block_offset;
   int started;
@@ -262,11 +263,12 @@ RAISING_STATIC(term_init_search_state(wp_query* q, wp_segment* seg)) {
     state->block_offset = offset;
     postings_block* block = wp_postings_block_at(pr, offset);
     state->docid_delta = block->max_docid;
+    state->posting_offset = block->postings_head;
     DEBUG("docid_delta is %u", state->docid_delta);
 
     // blocks are guaranteed to have one posting, so we can go ahead and read
     // one without worrying about being done with the block
-    RELAY_ERROR(wp_text_postings_region_read_posting_from_block(pr, block, block->postings_head, &state->next_posting_offset, &state->posting, 1));
+    RELAY_ERROR(wp_text_postings_region_read_posting_from_block(pr, block, state->posting_offset, &state->next_posting_offset, &state->posting, 1));
   }
 
   RELAY_ERROR(init_children(q, seg));
@@ -274,9 +276,16 @@ RAISING_STATIC(term_init_search_state(wp_query* q, wp_segment* seg)) {
   return NO_ERROR;
 }
 
+#define FREE_AND_NULL(v) do { \
+  if(v) { \
+    free(v); \
+    v = NULL; \
+  } \
+} while(0)
+
 RAISING_STATIC(term_release_search_state(wp_query* q)) {
   term_search_state* state = q->search_data;
-  if(!state->done) free(state->posting.positions);
+  if(!state->done) FREE_AND_NULL(state->posting.positions);
   free(state);
   RELAY_ERROR(release_children(q));
   return NO_ERROR;
@@ -448,6 +457,7 @@ RAISING_STATIC(term_next_doc(wp_query* q, wp_segment* seg, search_result* result
         state->docid_delta = block->max_docid;
       }
 
+      state->posting_offset = state->next_posting_offset;
       RELAY_ERROR(wp_text_postings_region_read_posting_from_block(pr, block, state->next_posting_offset, &state->next_posting_offset, &state->posting, 1));
       if(state->docid_delta <= state->posting.doc_id) RAISE_ERROR("have docid %u but posting %u", state->docid_delta, state->posting.doc_id);
       state->docid_delta -= state->posting.doc_id;
@@ -487,7 +497,7 @@ RAISING_STATIC(term_advance_to_doc(wp_query* q, wp_segment* seg, docid_t doc_id,
       state->block_offset = block->prev_block_offset;
       if(state->block_offset != OFFSET_NONE) {
         block = wp_postings_block_at(pr, state->block_offset);
-        state->next_posting_offset = block->postings_head;
+        state->posting_offset = block->postings_head;
         state->docid_delta = block->max_docid;
         moved = 1;
       }
@@ -506,12 +516,11 @@ RAISING_STATIC(term_advance_to_doc(wp_query* q, wp_segment* seg, docid_t doc_id,
   postings_block* block = wp_postings_block_at(pr, state->block_offset);
 
   if(moved) { // need to read in the first posting
-    free(state->posting.positions);
-    RELAY_ERROR(wp_text_postings_region_read_posting_from_block(pr, block, state->next_posting_offset, &state->next_posting_offset, &state->posting, 1));
+    FREE_AND_NULL(state->posting.positions);
+    RELAY_ERROR(wp_text_postings_region_read_posting_from_block(pr, block, state->posting_offset, &state->next_posting_offset, &state->posting, 0));
   }
 
   if(doc_id > block->max_docid) { // it's not in here!
-    // TODO see if we can actually do this. this might break the advance() contract
     DEBUG("docid %u is not in this block (min %u max %u). short-circuiting!", doc_id, block->min_docid, block->max_docid);
     *found = 0;
   }
@@ -519,8 +528,9 @@ RAISING_STATIC(term_advance_to_doc(wp_query* q, wp_segment* seg, docid_t doc_id,
     DEBUG("starting or resuming advance to doc %u at position %u of %u in block of docids (%u, %u)", doc_id, state->next_posting_offset, block->size, block->min_docid, block->max_docid);
     while((doc_id < state->docid_delta) && (state->next_posting_offset < block->size)) {
       DEBUG("during advance, found docid %u", state->docid_delta);
-      free(state->posting.positions);
-      RELAY_ERROR(wp_text_postings_region_read_posting_from_block(pr, block, state->next_posting_offset, &state->next_posting_offset, &state->posting, 1));
+      FREE_AND_NULL(state->posting.positions);
+      state->posting_offset = state->next_posting_offset;
+      RELAY_ERROR(wp_text_postings_region_read_posting_from_block(pr, block, state->posting_offset, &state->next_posting_offset, &state->posting, 0));
       if(state->docid_delta <= state->posting.doc_id) {
         char buf[1024];
         wp_query_to_s(q, 1024, buf);
@@ -539,7 +549,10 @@ RAISING_STATIC(term_advance_to_doc(wp_query* q, wp_segment* seg, docid_t doc_id,
   }
 
   DEBUG("[%s:'%s'] posting advanced to that of doc %u", q->field, q->word, state->docid_delta);
-  if(*found) RELAY_ERROR(search_result_init(result, q->field, q->word, state->docid_delta, state->posting.num_positions, state->posting.positions));
+  if(*found) { // reread, with positions
+    RELAY_ERROR(wp_text_postings_region_read_posting_from_block(pr, block, state->posting_offset, &state->next_posting_offset, &state->posting, 1));
+    RELAY_ERROR(search_result_init(result, q->field, q->word, state->docid_delta, state->posting.num_positions, state->posting.positions));
+  }
 
   return NO_ERROR;
 }
