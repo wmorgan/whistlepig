@@ -212,7 +212,7 @@ test-integration: batch-run-queries integration-tests/enron1m.index0.pr
 	ruby integration-tests/eval.rb integration-tests/testset1.txt
 
 bench: benchmark-queries integration-tests/enron1m.index0.pr
-	./benchmark-queries integration-tests/enron1m.index integration-tests/testset1.txt
+	./benchmark-queries integration-tests/enron1m.index integration-tests/benchset1.txt
 
 debug:
 	+make DEBUGOUTPUT=-DDEBUGOUTPUT

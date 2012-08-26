@@ -194,7 +194,7 @@ RAISING_STATIC(add_posting_to_block(postings_block* block, posting* po)) {
 }
 
 #define MIN_BLOCK_SIZE 32
-#define SOFT_MAX_BLOCK_SIZE 128 // this seems to wrok the best -- but tweak me!
+#define SOFT_MAX_BLOCK_SIZE 512 // this seems to work the best -- but tweak me!
 #define HARD_MAX_BLOCK_SIZE ((64 * 1024) - sizeof(postings_block)) // can never be exceeded
 RAISING_STATIC(build_new_block(postings_region* pr, uint32_t min_size, uint32_t old_offset, uint32_t* new_offset)) {
   DEBUG("going to make a new block to hold %u bytes", min_size);
